@@ -2,6 +2,7 @@ release:
   github:
     owner: ekristen
     name: distillery
+  prerelease: auto
 builds:
   - id: distillery
     binary: dist
