@@ -4,6 +4,7 @@ release:
     name: distillery
 builds:
   - id: distillery
+    binary: dist
     goos:
       - linux
       - windows
