@@ -39,6 +39,7 @@ func Untar(dst string, r io.Reader) ([]string, error) {
 
 		// the target location where the dir/file should be created
 		target := filepath.Join(dst, header.Name) //nolint:gosec
+		logrus.Tracef("tar > target %s", target)
 
 		// the following switch could also be done using fi.Mode(), not sure if there
 		// a benefit of using one vs. the other.
@@ -46,16 +47,24 @@ func Untar(dst string, r io.Reader) ([]string, error) {
 
 		// check the file type
 		switch header.Typeflag {
-		// if it's a dir and it doesn't exist create it
+		// if it's a dir, and it doesn't exist create it
 		case tar.TypeDir:
 			if _, err := os.Stat(target); err != nil {
 				if err := os.MkdirAll(target, 0755); err != nil {
 					return nil, err
 				}
+				logrus.Tracef("tar > create directory %s", target)
 			}
-			logrus.Tracef("tar > create directory %s", target)
 		// if it's a file create it
 		case tar.TypeReg:
+			baseDir := filepath.Dir(target)
+			if _, err := os.Stat(baseDir); err != nil {
+				if err := os.MkdirAll(baseDir, 0755); err != nil {
+					return nil, err
+				}
+				logrus.Tracef("tar > create directory %s", baseDir)
+			}
+
 			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
 			if err != nil {
 				return nil, err

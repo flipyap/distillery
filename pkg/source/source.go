@@ -76,7 +76,12 @@ func (s *Source) ExtractInstall(repo, binOs, binArch, version string) error { //
 		files = []string{s.File}
 	}
 
+	logrus.Debug("files: ", files)
+	logrus.Debug("length", len(files))
+
+	found := false
 	for _, file := range files {
+		logrus.Debug("checking file: ", file)
 		m, err := mimetype.DetectFile(file)
 		if err != nil {
 			return err
@@ -85,10 +90,10 @@ func (s *Source) ExtractInstall(repo, binOs, binArch, version string) error { //
 		logrus.Debugf("filename: %s, mimetype: %s", file, m.String())
 
 		if slices.Contains(ignoreFileExtensions, m.Extension()) {
+			logrus.Tracef("ignoring file: %s", file)
 			continue
 		}
 
-		found := false
 		if bins {
 			// TODO: fuzzy matching?
 			// cp file to $HOME/.distillery/bin
@@ -125,10 +130,10 @@ func (s *Source) ExtractInstall(repo, binOs, binArch, version string) error { //
 				// TODO: implement
 			}
 		}
+	}
 
-		if !found {
-			return fmt.Errorf("the request binary was not found in the release")
-		}
+	if !found {
+		return fmt.Errorf("the request binary was not found in the release")
 	}
 
 	return nil

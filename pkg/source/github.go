@@ -169,11 +169,9 @@ const darwin = "darwin"
 // will attempt to find the best match based on the suffix for the appropriate OS. If no match is found an error
 // is returned.
 func (s *GitHub) FindReleaseAsset() error { //nolint:funlen,gocyclo
-	suffixes := []string{"none"}
-	if s.GetOS() == darwin || s.GetOS() == "linux" {
-		suffixes = append(suffixes, ".tar.gz", ".zip")
-	} else if s.GetOS() == "windows" {
-		suffixes = append(suffixes, ".zip", ".exe")
+	suffixes := []string{"none", ".tar.gz", ".zip"}
+	if s.GetOS() == "windows" {
+		suffixes = []string{".zip", ".exe"}
 	}
 
 	oses := []string{s.GetOS()}
@@ -181,9 +179,12 @@ func (s *GitHub) FindReleaseAsset() error { //nolint:funlen,gocyclo
 		oses = append(oses, "macos")
 	}
 
-	archs := []string{s.GetOS()}
+	archs := []string{s.GetArch()}
 	if s.GetOS() == darwin {
 		archs = append(archs, "universal")
+	}
+	if s.GetArch() == "amd64" {
+		archs = append(archs, "x86_64", "64bit", "64")
 	}
 
 	var matchingAssets = make(map[string][]*github.ReleaseAsset)
