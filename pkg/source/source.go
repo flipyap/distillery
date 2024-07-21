@@ -2,30 +2,10 @@ package source
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"runtime"
-	"slices"
 	"strings"
 
-	"github.com/gabriel-vasile/mimetype"
-	"github.com/sirupsen/logrus"
-
-	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/asset"
 )
-
-var ignoreFileExtensions = []string{
-	".txt",
-	".sbom",
-}
-
-var executableMimetypes = []string{
-	"application/x-mach-binary",
-	"application/x-executable",
-	"application/vnd.microsoft.portable-executable",
-}
 
 type ISource interface {
 	GetSource() string
@@ -34,132 +14,6 @@ type ISource interface {
 	GetApp() string
 	GetID() string
 	Run(context.Context, string, string) error
-}
-
-type Source struct {
-	Options *Options
-
-	File string
-}
-
-func (s *Source) GetOS() string {
-	return s.Options.OS
-}
-func (s *Source) GetArch() string {
-	return s.Options.Arch
-}
-
-func (s *Source) ExtractInstall(repo, binOs, binArch, version string) error { //nolint:gocyclo
-	bins := true
-	bin := ""
-
-	hasSuffix := false
-	var files []string
-	if strings.HasSuffix(s.File, ".tar.gz") {
-		hasSuffix = true
-		raf, err := os.OpenFile(s.File, os.O_RDONLY, 0755)
-		if err != nil {
-			return err
-		}
-
-		tmpdir, err := os.MkdirTemp("", common.NAME)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmpdir)
-
-		files, err = Untar(tmpdir, raf)
-		if err != nil {
-			return err
-		}
-	} else {
-		files = []string{s.File}
-	}
-
-	logrus.Debug("files: ", files)
-	logrus.Debug("length", len(files))
-
-	found := false
-	for _, file := range files {
-		logrus.Debug("checking file: ", file)
-		m, err := mimetype.DetectFile(file)
-		if err != nil {
-			return err
-		}
-
-		logrus.Debugf("filename: %s, mimetype: %s", file, m.String())
-
-		if slices.Contains(ignoreFileExtensions, m.Extension()) {
-			logrus.Tracef("ignoring file: %s", file)
-			continue
-		}
-
-		if bins {
-			// TODO: fuzzy matching?
-			// cp file to $HOME/.distillery/bin
-			if slices.Contains(executableMimetypes, m.String()) {
-				found = true
-
-				logrus.Debugf("found executable: %s, %s, %s", file, m.String(), m.Extension())
-
-				dstFilename := filepath.Base(file)
-				if !hasSuffix {
-					dstFilename = repo
-				}
-
-				destBinaryName := fmt.Sprintf("%s-%s-%s-%s", repo, version, binOs, binArch)
-				destBinFilename := filepath.Join(s.Options.BinDir, destBinaryName)
-				simpleBinFilename := filepath.Join(s.Options.BinDir, dstFilename)
-
-				if err := s.CopyFile(file, destBinFilename); err != nil {
-					return err
-				}
-
-				// create symlink
-				// TODO: check if symlink exists
-				// TODO: allow override
-				if runtime.GOOS == binOs && runtime.GOARCH == binArch {
-					_ = os.Remove(simpleBinFilename)
-					_ = os.Symlink(destBinFilename, simpleBinFilename)
-				}
-			}
-		} else {
-			if bin == m.String() {
-				found = true
-				// cp file to $HOME/.distillery/bin
-				// TODO: implement
-			}
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("the request binary was not found in the release")
-	}
-
-	return nil
-}
-
-func (s *Source) CopyFile(srcFile, dstFile string) error {
-	// Open the source file for reading
-	src, err := os.Open(srcFile)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	dst, err := os.OpenFile(dstFile, os.O_CREATE|os.O_WRONLY, 0755)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	// Copy the contents of the source file to the destination file
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 type Options struct {
@@ -172,6 +26,68 @@ type Options struct {
 	DownloadsDir string
 }
 
+type Source struct {
+	Options *Options
+
+	File string
+
+	Binary    asset.IAsset
+	Signature asset.IAsset
+	Checksum  asset.IAsset
+	Key       asset.IAsset
+}
+
+func (s *Source) GetOS() string {
+	return s.Options.OS
+}
+func (s *Source) GetArch() string {
+	return s.Options.Arch
+}
+
+func (s *Source) Download(ctx context.Context) error {
+	if s.Binary != nil {
+		if err := s.Binary.Download(ctx); err != nil {
+			return err
+		}
+	}
+
+	if s.Signature != nil {
+		if err := s.Signature.Download(ctx); err != nil {
+			return err
+		}
+	}
+
+	if s.Checksum != nil {
+		if err := s.Checksum.Download(ctx); err != nil {
+			return err
+		}
+	}
+
+	if s.Key != nil {
+		if err := s.Key.Download(ctx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Source) Verify() error {
+	return nil
+}
+
+func (s *Source) Extract() error {
+	return s.Binary.Extract()
+}
+
+func (s *Source) Install() error {
+	return s.Binary.Install(s.Binary.ID(), s.Options.BinDir)
+}
+
+func (s *Source) Cleanup() error {
+	return s.Binary.Cleanup()
+}
+
 func New(source string, opts *Options) ISource {
 	version := "latest"
 	versionParts := strings.Split(source, "@")
@@ -182,11 +98,18 @@ func New(source string, opts *Options) ISource {
 
 	parts := strings.Split(source, "/")
 	if len(parts) == 2 {
-		// could be github or homebrew
+		// could be github or homebrew or hashicorp
 		if parts[0] == "homebrew" {
 			return &Homebrew{
 				Source:  Source{Options: opts},
 				Formula: parts[1],
+				Version: version,
+			}
+		} else if parts[0] == "hashicorp" {
+			return &Hashicorp{
+				Source:  Source{Options: opts},
+				Owner:   parts[1],
+				Repo:    parts[1],
 				Version: version,
 			}
 		}

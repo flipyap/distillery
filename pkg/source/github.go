@@ -2,38 +2,29 @@ package source
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-
-	"github.com/briandowns/spinner"
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/sirupsen/logrus"
-
-	"github.com/ekristen/distillery/pkg/common"
+	"path/filepath"
+	"strings"
 )
 
 type GitHub struct {
 	Source
 
-	Owner   string
-	Repo    string
-	Version string
-
-	GoReleaser *GoReleaser
-
-	Release      *github.RepositoryRelease
-	Assets       []*github.ReleaseAsset
-	MatchedAsset *github.ReleaseAsset
-
 	client *github.Client
+
+	Version string // Version to find for installation
+	Owner   string // Owner of the repository
+	Repo    string // Repository name
+
+	Release *github.RepositoryRelease
+
+	Assets []*GitHubAsset
 }
 
 func (s *GitHub) GetSource() string {
@@ -69,17 +60,22 @@ func (s *GitHub) Run(ctx context.Context, version, githubToken string) error {
 		return err
 	}
 
-	s.DetectGoReleaser()
-
-	if err := s.FindReleaseAsset(); err != nil {
+	ra, err := s.FindReleaseAsset()
+	if err != nil {
 		return err
 	}
 
-	if err := s.Download(ctx, version, githubToken); err != nil {
+	if err := ra.Download(ctx); err != nil {
 		return err
 	}
 
-	if err := s.ExtractInstall(s.GetRepo(), s.GetOS(), s.GetArch(), s.Version); err != nil {
+	defer s.Cleanup()
+
+	if err := s.Extract(); err != nil {
+		return err
+	}
+
+	if err := s.Install(); err != nil {
 		return err
 	}
 
@@ -96,6 +92,8 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		s.Version = strings.TrimPrefix(release.GetTagName(), "v")
 	} else {
 		releases, _, err := s.client.Repositories.ListReleases(ctx, s.GetOwner(), s.GetRepo(), nil)
 		if err != nil {
@@ -128,39 +126,15 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 	}
 
 	// TODO: add pagination support
-
-	s.Assets = assets
+	for _, a := range assets {
+		s.Assets = append(s.Assets, &GitHubAsset{
+			Asset:        asset.New(a.GetName(), "", s.GetOS(), s.GetArch(), s.Version),
+			GitHub:       s,
+			ReleaseAsset: a,
+		})
+	}
 
 	return nil
-}
-
-func (s *GitHub) DetectGoReleaser() {
-	hasChecksum := false
-	hasSig := false
-
-	gr := &GoReleaser{}
-
-	for _, asset := range s.Assets {
-		logrus.Debugf("asset: %s", asset.GetName())
-
-		if asset.GetName() == "checksum.txt" {
-			hasChecksum = true
-			gr.ChecksumFile = asset.GetName()
-		}
-
-		if strings.HasSuffix(asset.GetName(), ".sig") {
-			hasSig = true
-			gr.SignatureFile = asset.GetName()
-		}
-
-		if strings.HasSuffix(asset.GetName(), ".pem") {
-			gr.KeyFile = asset.GetName()
-		}
-	}
-
-	if hasChecksum && hasSig {
-		s.GoReleaser = gr
-	}
 }
 
 const darwin = "darwin"
@@ -168,167 +142,60 @@ const darwin = "darwin"
 // FindReleaseAsset - find the asset that matches the current OS and Arch, if multiple matches are found it
 // will attempt to find the best match based on the suffix for the appropriate OS. If no match is found an error
 // is returned.
-func (s *GitHub) FindReleaseAsset() error { //nolint:funlen,gocyclo
-	suffixes := []string{"none", ".tar.gz", ".zip"}
-	if s.GetOS() == "windows" {
-		suffixes = []string{".zip", ".exe"}
+func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) { //nolint:funlen,gocyclo
+	// 1. Setup Assets
+	// 2. Determine Asset Type (checksum, archive, other, unknown)
+	// 3. Score Assets
+	// 4. Select best Asset Type (archive/binary)
+	// 5. If Archive, we need to extract and determine which files we are keeping (binaries)
+	// 6. Extract files, and copy/symlink them into place
+	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
+
+	/*
+		exts := []string{"none", ".tar.gz", ".zip"}
+		if s.GetOS() == "windows" {
+			exts = []string{".zip", ".exe"}
+		}
+
+		oses := []string{s.GetOS()}
+		if s.GetOS() == darwin {
+			oses = append(oses, "macos")
+		}
+
+		archs := []string{s.GetArch()}
+		if s.GetOS() == darwin {
+			archs = append(archs, "universal")
+		}
+		if s.GetArch() == "amd64" {
+			archs = append(archs, "x86_64", "64bit", "64")
+		}
+	*/
+
+	for _, a := range s.Assets {
+		a.Score(&asset.ScoreOptions{
+			OS:         detectedOS.GetOS(),
+			Arch:       detectedOS.GetArchitectures(),
+			Extensions: detectedOS.GetExtensions(),
+		})
+
+		logrus.Debugf("name: %s, score: %d", a.GetName(), a.GetScore())
 	}
 
-	oses := []string{s.GetOS()}
-	if s.GetOS() == darwin {
-		oses = append(oses, "macos")
-	}
-
-	archs := []string{s.GetArch()}
-	if s.GetOS() == darwin {
-		archs = append(archs, "universal")
-	}
-	if s.GetArch() == "amd64" {
-		archs = append(archs, "x86_64", "64bit", "64")
-	}
-
-	var matchingAssets = make(map[string][]*github.ReleaseAsset)
-
-	for _, asset := range s.Assets {
-		logrus.Debugf("all > asset: %s", asset.GetName())
-
-		name := strings.ToLower(asset.GetName())
-
-		for _, os1 := range oses {
-			if strings.Contains(name, os1) {
-				matchingAssets["os"] = append(matchingAssets["os"], asset)
-			}
+	var best *GitHubAsset
+	for _, a := range s.Assets {
+		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
+		if best == nil || a.GetScore() > best.GetScore() && (a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
+			best = a
 		}
 	}
 
-	for _, asset := range matchingAssets["os"] {
-		logrus.Debugf("os > asset: %s", asset.GetName())
+	s.Binary = best
 
-		name := strings.ToLower(asset.GetName())
-		for _, arch := range archs {
-			if strings.Contains(name, arch) {
-				matchingAssets["arch"] = append(matchingAssets["arch"], asset)
-			}
-		}
+	if best != nil {
+		logrus.Debugf("best: %s", best.GetName())
+
+		return best, nil
 	}
 
-	if len(matchingAssets["arch"]) == 1 {
-		s.MatchedAsset = matchingAssets["arch"][0]
-		return nil
-	}
-
-	for _, asset := range matchingAssets["arch"] {
-		logrus.Debugf("arch > asset: %s", asset.GetName())
-
-		name := strings.ToLower(asset.GetName())
-
-		for _, suffix := range suffixes {
-			if strings.HasSuffix(name, suffix) {
-				matchingAssets["suffix"] = append(matchingAssets["suffix"], asset)
-			}
-		}
-	}
-
-	if len(matchingAssets["suffix"]) == 1 {
-		s.MatchedAsset = matchingAssets["suffix"][0]
-		return nil
-	}
-
-	// if we still have multiple matches, pick the tar.gz variant
-	for _, asset := range matchingAssets["suffix"] {
-		logrus.Debugf("suffix > asset: %s", asset.GetName())
-
-		name := strings.ToLower(asset.GetName())
-
-		if strings.HasSuffix(name, ".tar.gz") {
-			s.MatchedAsset = asset
-			return nil
-		}
-	}
-
-	if s.MatchedAsset == nil {
-		for _, asset := range matchingAssets["arch"] {
-			logrus.Debugf("arch 2 > asset: %s", asset.GetName())
-
-			name := strings.ToLower(asset.GetName())
-
-			ext := filepath.Ext(name)
-			if ext == "" {
-				s.MatchedAsset = asset
-				return nil
-			}
-		}
-	}
-
-	return fmt.Errorf("no matching asset found")
-}
-
-func (s *GitHub) Download(ctx context.Context, version, githubToken string) error {
-	spin := spinner.New(spinner.CharSets[11], 100*time.Millisecond) // Build our new spinner
-	spin.Suffix = " Downloading asset(s)"                           // Set the prefix text
-	spin.Start()                                                    // Start the spinner
-
-	rc, url, err := s.client.Repositories.DownloadReleaseAsset(
-		ctx, s.GetOwner(), s.GetRepo(), s.MatchedAsset.GetID(), http.DefaultClient)
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	if url != "" {
-		logrus.Tracef("url: %s", url)
-	}
-
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return err
-	}
-	downloadsDir := filepath.Join(cacheDir, common.NAME, "downloads")
-
-	filename := fmt.Sprintf("%s-%s-%s-%s", s.GetOwner(), s.GetRepo(), version, s.MatchedAsset.GetName())
-
-	assetFile := filepath.Join(downloadsDir, filename)
-	assetFileHash := assetFile + ".sha256"
-
-	stats, err := os.Stat(assetFileHash)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	s.File = assetFile
-
-	if stats != nil {
-		logrus.Debugf("file already downloaded: %s", assetFile)
-		return nil
-	}
-
-	// TODO: verify hash, add overwrite for force.
-
-	hasher := sha256.New()
-
-	// Create a temporary file
-	tmpfile, err := os.Create(assetFile)
-	if err != nil {
-		return err
-	}
-	defer tmpfile.Close()
-
-	multiWriter := io.MultiWriter(tmpfile, hasher)
-
-	// Write the asset's content to the temporary file
-	_, err = io.Copy(multiWriter, rc)
-	if err != nil {
-		return err
-	}
-
-	spin.FinalMSG = "Downloaded complete\n"
-	logrus.Tracef("hash: %s", fmt.Sprintf("%x", hasher.Sum(nil)))
-
-	_ = os.WriteFile(assetFile+".sha256", []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
-
-	logrus.Tracef("Downloaded asset to: %s", tmpfile.Name())
-
-	spin.Stop()
-
-	return nil
+	return nil, fmt.Errorf("no matching asset found")
 }

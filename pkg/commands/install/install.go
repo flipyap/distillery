@@ -41,16 +41,6 @@ func Execute(c *cli.Context) error {
 		DownloadsDir: downloadsDir,
 	})
 
-	// For now let people know we are not supporting these sources even though we are detecting them
-	switch source.(type) {
-	case *source2.GitLab:
-		return fmt.Errorf("gitlab is not supported yet")
-	case *source2.Homebrew:
-		return fmt.Errorf("homebrew is not supported yet")
-	case *source2.Hashicorp:
-		return fmt.Errorf("hashicorp is not supported yet")
-	}
-
 	fmt.Println(" source: ", source.GetSource())
 	fmt.Println("    app: ", source.GetApp())
 	fmt.Println("version: ", c.String("version"))
@@ -140,6 +130,12 @@ func Flags() []cli.Flag {
 			Name:     "github-token",
 			Usage:    "GitHub token to use for GitHub API requests",
 			EnvVars:  []string{"DISTILLERY_GITHUB_TOKEN"},
+			Category: "Authentication",
+		},
+		&cli.StringFlag{
+			Name:     "gitlab-token",
+			Usage:    "GitLab token to use for GitLab API requests",
+			EnvVars:  []string{"DISTILLERY_GITLAB_TOKEN"},
 			Category: "Authentication",
 		},
 	}

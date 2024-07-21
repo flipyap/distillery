@@ -11,6 +11,7 @@ import (
 	"github.com/ekristen/distillery/pkg/common"
 
 	_ "github.com/ekristen/distillery/pkg/commands/install"
+	_ "github.com/ekristen/distillery/pkg/commands/list"
 )
 
 func main() {
