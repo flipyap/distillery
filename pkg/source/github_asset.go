@@ -47,6 +47,7 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 
 	assetFile := filepath.Join(downloadsDir, filename)
 	a.DownloadPath = assetFile
+	a.Extension = filepath.Ext(a.DownloadPath)
 
 	assetFileHash := assetFile + ".sha256"
 

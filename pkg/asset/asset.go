@@ -47,26 +47,6 @@ const (
 	SBOM
 )
 
-func ScoreAll(assets []IAsset, opts *ScoreOptions) {
-	for _, asset := range assets {
-		asset.Score(opts)
-	}
-}
-
-func Best(assets []IAsset, aType Type) *Asset {
-	var best *Asset
-
-	for _, asset := range assets {
-		if best == nil || asset.GetScore() > best.score && asset.GetType() == aType {
-			best = asset.GetAsset()
-		}
-	}
-
-	return best
-}
-
-// ----------------------------------------------------------------------------
-
 type IAsset interface {
 	GetName() string
 	GetDisplayName() string
@@ -112,6 +92,7 @@ type Asset struct {
 	Arch    string
 	Version string
 
+	Extension    string
 	DownloadPath string
 	Hash         string
 	TempDir      string
@@ -200,8 +181,8 @@ func (a *Asset) Score(opts *ScoreOptions) int {
 	var scoringKeys []string
 	var scoringValues = make(map[string]int)
 
-	for _, os := range opts.OS {
-		scoringValues[strings.ToLower(os)] = 10
+	for _, os1 := range opts.OS {
+		scoringValues[strings.ToLower(os1)] = 10
 	}
 	for _, arch := range opts.Arch {
 		scoringValues[strings.ToLower(arch)] = 5
