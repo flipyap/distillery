@@ -49,6 +49,8 @@ func New(os, arch string) *OS {
 	switch arch {
 	case AMD64:
 		newOS.Architectures = append(newOS.Architectures, "x86_64", "64bit", "64")
+	case ARM64:
+		newOS.Architectures = append(newOS.Architectures, "aarch64")
 	}
 
 	return newOS

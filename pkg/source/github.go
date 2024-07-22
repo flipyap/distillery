@@ -49,6 +49,7 @@ func (s *GitHub) Run(ctx context.Context, version, githubToken string) error {
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	if githubToken != "" {
+		logrus.Debug("auth token provided")
 		s.client = s.client.WithAuthToken(githubToken)
 	}
 

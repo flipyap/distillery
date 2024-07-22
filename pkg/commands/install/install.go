@@ -31,7 +31,7 @@ func Execute(c *cli.Context) error {
 	_ = os.MkdirAll(metadataDir, 0755)
 	_ = os.MkdirAll(downloadsDir, 0755)
 
-	source := source2.New(c.Args().First(), &source2.Options{
+	source, err := source2.New(c.Args().First(), &source2.Options{
 		OS:           c.String("os"),
 		Arch:         c.String("arch"),
 		HomeDir:      homeDir,
@@ -40,6 +40,9 @@ func Execute(c *cli.Context) error {
 		MetadataDir:  metadataDir,
 		DownloadsDir: downloadsDir,
 	})
+	if err != nil {
+		return err
+	}
 
 	fmt.Println(" source: ", source.GetSource())
 	fmt.Println("    app: ", source.GetApp())

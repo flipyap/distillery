@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/ekristen/distillery/pkg/asset"
@@ -88,7 +89,7 @@ func (s *Source) Cleanup() error {
 	return s.Binary.Cleanup()
 }
 
-func New(source string, opts *Options) ISource {
+func New(source string, opts *Options) (ISource, error) {
 	version := "latest"
 	versionParts := strings.Split(source, "@")
 	if len(versionParts) > 1 {
@@ -97,6 +98,11 @@ func New(source string, opts *Options) ISource {
 	}
 
 	parts := strings.Split(source, "/")
+
+	if len(parts) == 1 {
+		return nil, fmt.Errorf("invalid install source, expect format of owner/repo or owner/repo@version")
+	}
+
 	if len(parts) == 2 {
 		// could be github or homebrew or hashicorp
 		if parts[0] == "homebrew" {
@@ -104,14 +110,14 @@ func New(source string, opts *Options) ISource {
 				Source:  Source{Options: opts},
 				Formula: parts[1],
 				Version: version,
-			}
+			}, nil
 		} else if parts[0] == "hashicorp" {
 			return &Hashicorp{
 				Source:  Source{Options: opts},
 				Owner:   parts[1],
 				Repo:    parts[1],
 				Version: version,
-			}
+			}, nil
 		}
 
 		return &GitHub{
@@ -119,7 +125,7 @@ func New(source string, opts *Options) ISource {
 			Owner:   parts[0],
 			Repo:    parts[1],
 			Version: version,
-		}
+		}, nil
 	} else if len(parts) >= 3 {
 		if strings.HasPrefix(parts[0], "github") {
 			return &GitHub{
@@ -127,18 +133,18 @@ func New(source string, opts *Options) ISource {
 				Owner:   parts[1],
 				Repo:    parts[2],
 				Version: version,
-			}
+			}, nil
 		} else if strings.HasPrefix(parts[0], "gitlab") {
 			return &GitLab{
 				Source:  Source{Options: opts},
 				Owner:   parts[1],
 				Repo:    parts[2],
 				Version: version,
-			}
+			}, nil
 		}
 
-		return nil
+		return nil, nil
 	}
 
-	return nil
+	return nil, nil
 }
