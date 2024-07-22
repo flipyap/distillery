@@ -181,6 +181,9 @@ func (a *Asset) Score(opts *ScoreOptions) int {
 	var scoringKeys []string
 	var scoringValues = make(map[string]int)
 
+	// Note: if it has the word update in it, we want to deprioritize it.
+	scoringValues["update"] = -20
+
 	for _, os1 := range opts.OS {
 		scoringValues[strings.ToLower(os1)] = 10
 	}
