@@ -14,21 +14,31 @@ The goal of this project is to leverage the collective power of all the develope
 [goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist) and many others to 
 pre-compile their software and put their binaries up on GitHub or GitLab and install the binaries.
 
+## Install
+
+1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
+2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
+3. Extract and Run `./dist install ekristen/distillery`
+4. Delete `./dist` and the .tar.gz
+5. Run `dist install owner/repo` to install a binary from GitHub Repository
+
 ## Goals
 
 - Make it simple to install binaries on your system from multiple sources
-- Do not rely on a centralized repository of package managers
-- Support binary verifications and signatures if exist, prompt the user if they don't
+- Do not rely on a centralized repository of metadata like package managers
+- Support binary verifications and signatures if they exist
 - Support multiple platforms and architectures
 
-## TODO
+## Supported Platforms
+
+- GitHub
+- GitLab
+- Homebrew (binaries only)
+- Hashicorp
+
+## Needed Before 1.0
 
 - [ ] implement signature verification
-- [ ] implement multiple additional sources
-
-## Usage
-
-1. Download `dist` place it in your path
-2. Add `$HOME/.distillery/bin` to your path
-3. Run `dist install owner/repo` to install a binary from GitHub Repository
-4. Enjoy
+- [ ] implement hash verification
+- [ ] implement uninstall
+- [ ] implement cleanup

@@ -50,7 +50,7 @@ func Execute(c *cli.Context) error {
 	fmt.Println("     os: ", c.String("os"))
 	fmt.Println("   arch: ", c.String("arch"))
 
-	// list releases using github golang sdk
+	// list releases using GitHub golang sdk
 	// download the binary
 	// extract the binary
 	// move the binary to the correct location
