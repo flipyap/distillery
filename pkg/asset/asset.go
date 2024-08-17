@@ -32,6 +32,7 @@ var (
 	sigType      = filetype.AddType("sig", "text/plain")
 	sbomJsonType = filetype.AddType(".sbom.json", "application/json")
 	sbomType     = filetype.AddType(".sbom", "application/octet-stream")
+	pubType      = filetype.AddType(".pub", "text/plain")
 )
 
 type Type int
@@ -150,11 +151,11 @@ func (a *Asset) Classify() {
 			a.Type = Installer
 		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2:
 			a.Type = Archive
-		case types.Unknown, matchers.TypeExe:
+		case matchers.TypeExe:
 			a.Type = Binary
 		case sigType, ascType:
 			a.Type = Signature
-		case pemType:
+		case pemType, pubType:
 			a.Type = Key
 		case sbomJsonType, sbomType:
 			a.Type = SBOM
@@ -164,16 +165,20 @@ func (a *Asset) Classify() {
 	}
 
 	if a.Type == Unknown {
-		if strings.Contains(a.Name, ".sha256") || strings.Contains(a.Name, ".md5") {
+		logrus.Tracef("classifying asset based on name: %s", a.Name)
+		name := strings.ToLower(a.Name)
+		if strings.Contains(name, ".sha256") || strings.Contains(name, ".md5") {
 			a.Type = Checksum
 		}
-		if strings.Contains(a.Name, "checksums") {
+		if strings.Contains(name, "checksums") {
 			a.Type = Checksum
 		}
 		if strings.Contains(a.Name, "SHA") && strings.Contains(a.Name, "SUMS") {
 			a.Type = Checksum
 		}
 	}
+
+	logrus.Tracef("classified: %s (%d)", a.Name, a.Type)
 }
 
 // Score returns the score of the asset based on the options provided
@@ -181,7 +186,8 @@ func (a *Asset) Score(opts *ScoreOptions) int {
 	var scoringKeys []string
 	var scoringValues = make(map[string]int)
 
-	// Note: if it has the word update in it, we want to deprioritize it.
+	// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
+	// a rust or go binary distribution
 	scoringValues["update"] = -20
 
 	for _, os1 := range opts.OS {
@@ -217,10 +223,10 @@ func (a *Asset) IsSupportedExtension() bool {
 		case matchers.TypeGz, types.Unknown, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, matchers.TypeExe:
 			break
 		case msiType, matchers.TypeDeb, matchers.TypeRpm, ascType:
-			logrus.Debugf("Filename %s doesn't have a supported extension", a.Name)
+			logrus.Debugf("filename %s doesn't have a supported extension", a.Name)
 			return false
 		default:
-			logrus.Debugf("Filename %s doesn't have a supported extension", a.Name)
+			logrus.Debugf("filename %s doesn't have a supported extension", a.Name)
 			return false
 		}
 	}
@@ -280,11 +286,7 @@ func (a *Asset) Install(id, binDir string) error {
 			continue
 		}
 
-		// TODO: fuzzy matching?
-		// cp file to $HOME/.distillery/bin
 		if slices.Contains(executableMimetypes, m.String()) {
-			found = true
-
 			logrus.Debugf("found installable executable: %s, %s, %s", file.Name, m.String(), m.Extension())
 			file.Installable = true
 		}
@@ -296,6 +298,7 @@ func (a *Asset) Install(id, binDir string) error {
 			continue
 		}
 
+		found = true
 		logrus.Debugf("installing file: %s", file.Name)
 
 		fullPath := filepath.Join(a.TempDir, file.Name)
@@ -396,7 +399,6 @@ func (a *Asset) doExtract(in io.Reader) error {
 	}
 
 	if processor != nil {
-		// log.Debugf("Processing %s file %s with %s", repoName, name, runtime.FuncForPC(reflect.ValueOf(processor).Pointer()).Name())
 		newReader, err := processor(outputFile)
 		if err != nil {
 			return err
@@ -453,7 +455,7 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 			return nil, err
 		}
 
-		// manually close here after each file operation; defering would cause each file close
+		// manually close here after each file operation; deferring would cause each file close
 		// to wait until all operations have completed.
 		f.Close()
 
@@ -515,7 +517,7 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 				return nil, err
 			}
 
-			// manually close here after each file operation; defering would cause each file close
+			// manually close here after each file operation; deferring would cause each file close
 			// to wait until all operations have completed.
 			f.Close()
 
@@ -525,7 +527,6 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 	}
 
 	if len(a.Files) == 0 {
-		//return nil, fmt.Errorf("no files found in tar archive, use -p flag to manually select . PackagePath [%s]", f.opts.PackagePath)
 		return nil, fmt.Errorf("no files in tar archive")
 	}
 

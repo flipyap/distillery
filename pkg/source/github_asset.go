@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/common"
-	"github.com/google/go-github/v62/github"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-github/v62/github"
+	"github.com/sirupsen/logrus"
+
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/common"
 )
 
 type GitHubAsset struct {

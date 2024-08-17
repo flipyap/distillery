@@ -42,3 +42,23 @@ pre-compile their software and put their binaries up on GitHub or GitLab and ins
 - [ ] implement hash verification
 - [ ] implement uninstall
 - [ ] implement cleanup
+
+## Behaviors
+
+- Caching of HTTP calls where possible (GitHub primarily)
+- Caching of downloads
+- Allow for multiple versions of a binary using `tool@version` syntax
+- Running installation for any version will automatically update the default symlink to that version (i.e. switching versions)
+
+## Directory Structure
+
+- Binaries
+  - Symlinks `$HOME/.distillery/bin` (this should be in your `$PATH` variable)
+  - Binaries `$HOME/.distillery/opt` (this is where the raw binaries are stored and symlinked to)
+    - `source/owner/repo/version/<binaries>`
+      - example: `github/ekristen/aws-nuke/v2.15.0/aws-nuke`
+      - example: `hashicorp/terraform/v0.14.7/terraform`
+- Cache directory (downloads, http caching)
+  - MacOS `$HOME/Library/Caches/distillery`
+  - Linux `$HOME/.cache/distillery`
+  - Windows `$HOME/AppData/Local/distillery`

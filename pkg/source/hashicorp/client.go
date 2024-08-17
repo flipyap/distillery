@@ -3,14 +3,17 @@ package hashicorp
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/common"
 	"net/http"
+
+	"github.com/ekristen/distillery/pkg/common"
 )
 
+// Client is a client for interacting with the HashiCorp Releases API
 type Client struct {
 	client *http.Client
 }
 
+// NewClient creates a new client for interacting with the HashiCorp Releases API
 func NewClient(client *http.Client) *Client {
 	if client == nil {
 		client = &http.Client{}
@@ -21,7 +24,7 @@ func NewClient(client *http.Client) *Client {
 	}
 }
 
-// ListProducts lists all products
+// ListProducts returns a list of products available from the HashiCorp Releases API
 func (c *Client) ListProducts() (Products, error) {
 	req, err := http.NewRequest(http.MethodGet, "https://api.releases.hashicorp.com/v1/products", nil)
 	if err != nil {
@@ -44,8 +47,27 @@ func (c *Client) ListProducts() (Products, error) {
 	return data, nil
 }
 
-func (c *Client) ListReleases(product string) ([]*Release, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s?license_class=oss", product), nil)
+// ListReleasesOptions are options for listing releases
+type ListReleasesOptions struct {
+	PreReleases  bool
+	LicenseClass string
+}
+
+// ListReleases returns a list of releases for a product from the HashiCorp Releases API
+func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Release, error) {
+	if opts == nil {
+		opts = &ListReleasesOptions{
+			LicenseClass: "oss",
+		}
+	}
+
+	var licenseClass string
+	if opts.LicenseClass != "all" {
+		licenseClass = fmt.Sprintf("license_class=%s", opts.LicenseClass)
+	}
+
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s?%s", product, licenseClass), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,11 +85,28 @@ func (c *Client) ListReleases(product string) ([]*Release, error) {
 		return nil, err
 	}
 
+	if !opts.PreReleases {
+		for i, release := range data {
+			if release.IsPrerelease == true {
+				if i < len(data)-1 {
+					data = append(data[:i], data[i+1:]...)
+				} else {
+					data = data[:i]
+				}
+			}
+		}
+	}
+
 	return data, nil
 }
 
+// GetVersion returns a specific release for a product from the HashiCorp Releases API
 func (c *Client) GetVersion(product, version string) (*Release, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s/%s?license_class=oss", product, version), nil)
+	licenseClass := fmt.Sprintf("license_class=oss")
+
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s/%s?%s",
+			product, version, licenseClass), nil)
 	if err != nil {
 		return nil, err
 	}

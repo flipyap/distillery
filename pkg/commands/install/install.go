@@ -2,18 +2,25 @@ package install
 
 import (
 	"fmt"
+
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/apex/log"
+	clilog "github.com/apex/log/handlers/cli"
+
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
-	source2 "github.com/ekristen/distillery/pkg/source"
+	"github.com/ekristen/distillery/pkg/source"
 )
 
 func Execute(c *cli.Context) error {
+	log.SetHandler(clilog.Default)
+	log.SetLevel(log.DebugLevel)
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -25,18 +32,20 @@ func Execute(c *cli.Context) error {
 	}
 
 	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
+	optDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "opt")
 	metadataDir := filepath.Join(cacheDir, common.NAME, "metadata")
 	downloadsDir := filepath.Join(cacheDir, common.NAME, "downloads")
 	_ = os.MkdirAll(binDir, 0755)
 	_ = os.MkdirAll(metadataDir, 0755)
 	_ = os.MkdirAll(downloadsDir, 0755)
 
-	source, err := source2.New(c.Args().First(), &source2.Options{
+	src, err := source.New(c.Args().First(), &source.Options{
 		OS:           c.String("os"),
 		Arch:         c.String("arch"),
 		HomeDir:      homeDir,
 		CacheDir:     cacheDir,
 		BinDir:       binDir,
+		OptDir:       optDir,
 		MetadataDir:  metadataDir,
 		DownloadsDir: downloadsDir,
 	})
@@ -44,11 +53,20 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(" source: ", source.GetSource())
-	fmt.Println("    app: ", source.GetApp())
-	fmt.Println("version: ", c.String("version"))
-	fmt.Println("     os: ", c.String("os"))
-	fmt.Println("   arch: ", c.String("arch"))
+	log.Infof("distillery/%s", common.AppVersion.Summary)
+	log.Infof(" source: %s", src.GetSource())
+	log.Infof("    app: %s", src.GetApp())
+	log.Infof("version: %s", c.String("version"))
+	log.Infof("     os: %s", c.String("os"))
+	log.Infof("   arch: %s", c.String("arch"))
+
+	/*
+		fmt.Println(" source: ", source.GetSource())
+		fmt.Println("    app: ", source.GetApp())
+		fmt.Println("version: ", c.String("version"))
+		fmt.Println("     os: ", c.String("os"))
+		fmt.Println("   arch: ", c.String("arch"))
+	*/
 
 	// list releases using GitHub golang sdk
 	// download the binary
@@ -56,12 +74,12 @@ func Execute(c *cli.Context) error {
 	// move the binary to the correct location
 	// create a symlink to the binary
 
-	if err := source.Run(c.Context, c.String("version"), c.String("github-token")); err != nil {
+	if err := src.Run(c.Context, c.String("version"), c.String("github-token")); err != nil {
 		return err
 	}
 
 	// TODO: inspect file, inspect files, extract files, move files, create symlinks
-	fmt.Println("installation complete")
+	log.Infof("installation complete")
 
 	return nil
 }

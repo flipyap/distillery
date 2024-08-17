@@ -3,13 +3,17 @@ package source //nolint:dupl
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
+	"github.com/apex/log"
+	"github.com/sirupsen/logrus"
+
+	"github.com/gregjones/httpcache"
+	"github.com/gregjones/httpcache/diskcache"
+
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/ekristen/distillery/pkg/source/hashicorp"
-	"github.com/gregjones/httpcache"
-	"github.com/gregjones/httpcache/diskcache"
-	"github.com/sirupsen/logrus"
-	"path/filepath"
 )
 
 type Hashicorp struct {
@@ -37,8 +41,13 @@ func (s *Hashicorp) GetApp() string {
 	return fmt.Sprintf("%s/%s", s.Owner, s.Repo)
 }
 func (s *Hashicorp) GetID() string {
-	return fmt.Sprintf("%s/%s/%s", s.GetSource(), s.GetOwner(), s.GetRepo())
+	return fmt.Sprintf("%s-%s", s.GetSource(), s.GetRepo())
 }
+
+func (s *Hashicorp) GetDownloadsDir() string {
+	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+}
+
 func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
@@ -47,7 +56,7 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	var release *hashicorp.Release
 
 	if s.Version == "latest" {
-		releases, err := s.client.ListReleases(s.Repo)
+		releases, err := s.client.ListReleases(s.Repo, nil)
 		if err != nil {
 			return err
 		}
@@ -71,9 +80,9 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 		return fmt.Errorf("no release found for %s version %s", s.Repo, s.Version)
 	}
 
-	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
+	log.Infof("installing %s@%s", release.Name, release.Version)
 
-	fmt.Println(release.Name, release.Version)
+	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
 
 	s.Assets = make([]*HashicorpAsset, 0)
 	for _, build := range release.Builds {

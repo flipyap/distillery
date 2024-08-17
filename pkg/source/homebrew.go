@@ -41,6 +41,11 @@ func (s *Homebrew) GetApp() string {
 func (s *Homebrew) GetID() string {
 	return s.Formula
 }
+
+func (s *Homebrew) GetDownloadsDir() string {
+	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+}
+
 func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 

@@ -43,6 +43,11 @@ func (s *GitLab) GetApp() string {
 func (s *GitLab) GetID() string {
 	return fmt.Sprintf("%s/%s/%s", s.GetSource(), s.GetOwner(), s.GetRepo())
 }
+
+func (s *GitLab) GetDownloadsDir() string {
+	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+}
+
 func (s *GitLab) Run(ctx context.Context, version, token string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 

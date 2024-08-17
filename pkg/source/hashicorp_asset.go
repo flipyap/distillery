@@ -25,7 +25,7 @@ type HashicorpAsset struct {
 }
 
 func (a *HashicorpAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s", a.Hashicorp.GetOwner(), a.Hashicorp.GetRepo(), a.Hashicorp.Version)
+	return fmt.Sprintf("%s-%s-%s", a.Hashicorp.GetSource(), a.Hashicorp.GetRepo(), a.Hashicorp.Version)
 }
 
 func (a *HashicorpAsset) Download(ctx context.Context) error {

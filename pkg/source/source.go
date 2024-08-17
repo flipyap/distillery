@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 type ISource interface {
@@ -14,6 +15,7 @@ type ISource interface {
 	GetRepo() string
 	GetApp() string
 	GetID() string
+	GetDownloadsDir() string
 	Run(context.Context, string, string) error
 }
 
@@ -23,12 +25,14 @@ type Options struct {
 	HomeDir      string
 	CacheDir     string
 	BinDir       string
+	OptDir       string
 	MetadataDir  string
 	DownloadsDir string
 }
 
 type Source struct {
-	Options *Options
+	Options  *Options
+	OSConfig *osconfig.OS
 
 	File string
 
@@ -41,6 +45,7 @@ type Source struct {
 func (s *Source) GetOS() string {
 	return s.Options.OS
 }
+
 func (s *Source) GetArch() string {
 	return s.Options.Arch
 }
@@ -74,6 +79,19 @@ func (s *Source) Download(ctx context.Context) error {
 }
 
 func (s *Source) Verify() error {
+	if err := s.verifySignature(); err != nil {
+		return err
+	}
+
+	return s.verifyChecksum()
+}
+
+func (s *Source) verifySignature() error {
+
+	return nil
+}
+
+func (s *Source) verifyChecksum() error {
 	return nil
 }
 
@@ -90,6 +108,8 @@ func (s *Source) Cleanup() error {
 }
 
 func New(source string, opts *Options) (ISource, error) {
+	detectedOS := osconfig.New(opts.OS, opts.Arch)
+
 	version := "latest"
 	versionParts := strings.Split(source, "@")
 	if len(versionParts) > 1 {
@@ -104,16 +124,16 @@ func New(source string, opts *Options) (ISource, error) {
 	}
 
 	if len(parts) == 2 {
-		// could be github or homebrew or hashicorp
+		// could be GitHub or Homebrew or Hashicorp
 		if parts[0] == "homebrew" {
 			return &Homebrew{
-				Source:  Source{Options: opts},
+				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Formula: parts[1],
 				Version: version,
 			}, nil
 		} else if parts[0] == "hashicorp" {
 			return &Hashicorp{
-				Source:  Source{Options: opts},
+				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Owner:   parts[1],
 				Repo:    parts[1],
 				Version: version,
@@ -121,22 +141,31 @@ func New(source string, opts *Options) (ISource, error) {
 		}
 
 		return &GitHub{
-			Source:  Source{Options: opts},
+			Source:  Source{Options: opts, OSConfig: detectedOS},
 			Owner:   parts[0],
 			Repo:    parts[1],
 			Version: version,
 		}, nil
 	} else if len(parts) >= 3 {
 		if strings.HasPrefix(parts[0], "github") {
+			if parts[1] == "hashicorp" {
+				return &Hashicorp{
+					Source:  Source{Options: opts, OSConfig: detectedOS},
+					Owner:   parts[1],
+					Repo:    parts[2],
+					Version: version,
+				}, nil
+			}
+
 			return &GitHub{
-				Source:  Source{Options: opts},
+				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Owner:   parts[1],
 				Repo:    parts[2],
 				Version: version,
 			}, nil
 		} else if strings.HasPrefix(parts[0], "gitlab") {
 			return &GitLab{
-				Source:  Source{Options: opts},
+				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Owner:   parts[1],
 				Repo:    parts[2],
 				Version: version,
