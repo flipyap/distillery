@@ -56,6 +56,7 @@ type IAsset interface {
 	GetAsset() *Asset
 	GetFiles() []*File
 	GetTempPath() string
+	GetFilePath() string
 	Score(options *ScoreOptions) int
 	Download(context.Context) error
 	Extract() error
@@ -71,6 +72,7 @@ func New(name, displayName, os, arch, version string) *Asset {
 		OS:          os,
 		Arch:        arch,
 		Version:     version,
+		Files:       make([]*File, 0),
 		score:       0,
 	}
 
@@ -81,6 +83,7 @@ func New(name, displayName, os, arch, version string) *Asset {
 
 type File struct {
 	Name        string
+	Alias       string
 	Installable bool
 }
 
@@ -135,6 +138,10 @@ func (a *Asset) GetTempPath() string {
 
 func (a *Asset) Download(_ context.Context) error {
 	return fmt.Errorf("not implemented")
+}
+
+func (a *Asset) GetFilePath() string {
+	return a.DownloadPath
 }
 
 type ScoreOptions struct {
@@ -303,6 +310,9 @@ func (a *Asset) Install(id, binDir string) error {
 
 		fullPath := filepath.Join(a.TempDir, file.Name)
 		dstFilename := filepath.Base(fullPath)
+		if file.Alias != "" {
+			dstFilename = file.Alias
+		}
 
 		// Strip the OS and Arch from the filename if it exists, this happens mostly when the binary is being
 		// uploaded directly instead of being encapsulated in a tarball or zip file
@@ -395,7 +405,7 @@ func (a *Asset) doExtract(in io.Reader) error {
 		// write file to temp directory?
 		// TODO: clean this up, it's ugly
 		os.WriteFile(filepath.Join(a.TempDir, filepath.Base(a.DownloadPath)), buf.Bytes(), 0644)
-		a.Files = append(a.Files, &File{Name: filepath.Base(a.DownloadPath)})
+		a.Files = append(a.Files, &File{Name: filepath.Base(a.DownloadPath), Alias: a.GetName()})
 	}
 
 	if processor != nil {

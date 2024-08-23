@@ -24,7 +24,7 @@ type GitHubAsset struct {
 }
 
 func (a *GitHubAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s", a.GitHub.GetOwner(), a.GitHub.GetRepo(), a.GitHub.Version)
+	return fmt.Sprintf("%s-%s-%s-%d", a.GitHub.GetOwner(), a.GitHub.GetRepo(), a.GitHub.Version, a.ReleaseAsset.GetID())
 }
 
 func (a *GitHubAsset) Download(ctx context.Context) error {

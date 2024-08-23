@@ -2,7 +2,12 @@ package source
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
+	"github.com/ekristen/distillery/pkg/cosign"
+	"github.com/sirupsen/logrus"
+	"os"
 	"strings"
 
 	"github.com/ekristen/distillery/pkg/asset"
@@ -51,6 +56,7 @@ func (s *Source) GetArch() string {
 }
 
 func (s *Source) Download(ctx context.Context) error {
+	logrus.Info("download called")
 	if s.Binary != nil {
 		if err := s.Binary.Download(ctx); err != nil {
 			return err
@@ -79,14 +85,53 @@ func (s *Source) Download(ctx context.Context) error {
 }
 
 func (s *Source) Verify() error {
-	if err := s.verifySignature(); err != nil {
-		return err
-	}
+	/*
+		if err := s.verifySignature(); err != nil {
+			return err
+		}
+	*/
 
 	return s.verifyChecksum()
 }
 
 func (s *Source) verifySignature() error {
+	logrus.Info("verifying signature")
+
+	cosignFileContent, err := os.ReadFile(s.Checksum.GetFilePath())
+	if err != nil {
+		return err
+	}
+
+	publicKeyContentEncoded, err := os.ReadFile(s.Key.GetFilePath())
+	if err != nil {
+		return err
+	}
+
+	publicKeyContent, err := base64.StdEncoding.DecodeString(string(publicKeyContentEncoded))
+	if err != nil {
+		return err
+	}
+
+	pubKey, err := cosign.ParsePublicKey(publicKeyContent)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Public Key: %+v\n", pubKey)
+
+	sigData, err := os.ReadFile(s.Signature.GetFilePath())
+	if err != nil {
+		return err
+	}
+
+	valid, err := cosign.VerifySignature(pubKey, cosignFileContent, sigData)
+	if err != nil {
+		return err
+	}
+
+	if !valid {
+		return errors.New("unable to validate signature")
+	}
 
 	return nil
 }

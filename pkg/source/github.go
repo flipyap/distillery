@@ -68,12 +68,17 @@ func (s *GitHub) Run(ctx context.Context, version, githubToken string) error {
 	if err != nil {
 		return err
 	}
+	_ = ra
 
-	if err := ra.Download(ctx); err != nil {
+	if err := s.Download(ctx); err != nil {
 		return err
 	}
 
 	defer s.Cleanup()
+
+	if err := s.Verify(); err != nil {
+		return err
+	}
 
 	if err := s.Extract(); err != nil {
 		return err
