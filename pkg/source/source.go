@@ -2,15 +2,18 @@ package source
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/cosign"
-	"github.com/sirupsen/logrus"
+	"github.com/ekristen/distillery/pkg/checksum"
 	"os"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/cosign"
 	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
@@ -33,6 +36,8 @@ type Options struct {
 	OptDir       string
 	MetadataDir  string
 	DownloadsDir string
+
+	Settings map[string]interface{}
 }
 
 type Source struct {
@@ -137,6 +142,28 @@ func (s *Source) verifySignature() error {
 }
 
 func (s *Source) verifyChecksum() error {
+	if v, ok := s.Options.Settings["no-checksum-verify"]; ok && v.(bool) {
+		logrus.Warn("skipping checksum verification")
+		return nil
+	}
+
+	logrus.Debug("verifying checksum")
+	logrus.Tracef("binary: %s", s.Binary.GetName())
+
+	match, err := checksum.CompareHashWithChecksumFile(s.Binary.GetName(),
+		s.Binary.GetFilePath(), s.Checksum.GetFilePath(), sha256.New)
+	if err != nil {
+		return err
+	}
+
+	logrus.Tracef("Checksum Match: %v", match)
+
+	if !match {
+		return errors.New("checksum mismatch")
+	}
+
+	logrus.Info("checksum verified")
+
 	return nil
 }
 

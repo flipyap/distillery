@@ -3,7 +3,9 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/apex/log"
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/score"
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
@@ -47,12 +49,13 @@ func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
 }
 
-func (s *GitHub) Run(ctx context.Context, version, githubToken string) error {
+func (s *GitHub) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	githubToken := s.Options.Settings["github-token"].(string)
 	if githubToken != "" {
-		logrus.Debug("auth token provided")
+		log.Debug("auth token provided")
 		s.client = s.client.WithAuthToken(githubToken)
 	}
 
@@ -126,22 +129,30 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 }
 
 func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
-	// TODO: add pagination support
-
-	assets, _, err := s.client.Repositories.ListReleaseAssets(
-		ctx, s.GetOwner(), s.GetRepo(), s.Release.GetID(), &github.ListOptions{
-			PerPage: 100,
-		})
-	if err != nil {
-		return err
+	params := &github.ListOptions{
+		PerPage: 100,
 	}
 
-	for _, a := range assets {
-		s.Assets = append(s.Assets, &GitHubAsset{
-			Asset:        asset.New(a.GetName(), "", s.GetOS(), s.GetArch(), s.Version),
-			GitHub:       s,
-			ReleaseAsset: a,
-		})
+	for {
+		assets, res, err := s.client.Repositories.ListReleaseAssets(
+			ctx, s.GetOwner(), s.GetRepo(), s.Release.GetID(), params)
+		if err != nil {
+			return err
+		}
+
+		for _, a := range assets {
+			s.Assets = append(s.Assets, &GitHubAsset{
+				Asset:        asset.New(a.GetName(), "", s.GetOS(), s.GetArch(), s.Version),
+				GitHub:       s,
+				ReleaseAsset: a,
+			})
+		}
+
+		if res.NextPage == 0 {
+			break
+		}
+
+		params.Page = res.NextPage
 	}
 
 	return nil
@@ -177,25 +188,70 @@ func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) { //nolint:funlen,gocy
 
 	s.Binary = best
 
+	fileScoring := map[asset.Type][]string{}
+	fileScored := map[asset.Type][]score.Sorted{}
 	for _, a := range s.Assets {
-		if s.Checksum == nil && a.GetType() == asset.Checksum {
-			logrus.Tracef("found checksum file: %s", a.GetName())
-			s.Checksum = a
+		if _, ok := fileScoring[a.GetType()]; !ok {
+			fileScoring[a.GetType()] = []string{}
+		}
+		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
+	}
+	for k, v := range fileScoring {
+		var ext []string
+		if k == asset.Key {
+			ext = []string{"key", "pub", "pem"}
+		} else if k == asset.Signature {
+			ext = []string{"sig", "asc"}
+		} else if k == asset.Checksum {
+			ext = []string{"sha256", "md5", "sha1", "txt"}
 		}
 
-		if s.Signature == nil && a.GetType() == asset.Signature {
-			logrus.Tracef("found signature file: %s", a.GetName())
-			s.Signature = a
+		if _, ok := fileScored[k]; !ok {
+			fileScored[k] = []score.Sorted{}
 		}
 
-		if s.Key == nil && a.GetType() == asset.Key {
-			logrus.Tracef("found key file: %s", a.GetName())
-			s.Key = a
+		fileScored[k] = score.Score(v, &score.Options{
+			OS:         s.OSConfig.GetOS(),
+			Arch:       s.OSConfig.GetArchitectures(),
+			Extensions: ext,
+			Names:      []string{strings.ReplaceAll(s.Binary.GetName(), filepath.Ext(s.Binary.GetName()), "")},
+		})
+
+		if len(fileScored[k]) > 0 {
+			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
 		}
 	}
 
+	for _, a := range s.Assets {
+		for k, v := range fileScored {
+			vv := v[0]
+
+			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key {
+				s.Checksum = a
+			}
+			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key {
+				s.Signature = a
+			}
+			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key {
+				s.Key = a
+			}
+		}
+	}
+
+	if s.Binary != nil {
+		logrus.Tracef("best binary: %s", s.Binary.GetName())
+	}
+	if s.Checksum != nil {
+		logrus.Tracef("best checksum: %s", s.Checksum.GetName())
+	}
+	if s.Signature != nil {
+		logrus.Tracef("best signature: %s", s.Signature.GetName())
+	}
+	if s.Key != nil {
+		logrus.Tracef("best key: %s", s.Key.GetName())
+	}
+
 	if best != nil {
-		logrus.Debugf("best: %s", best.GetName())
 		return best, nil
 	}
 

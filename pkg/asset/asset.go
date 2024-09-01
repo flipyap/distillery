@@ -31,6 +31,7 @@ var (
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
 	sigType      = filetype.AddType("sig", "text/plain")
 	sbomJsonType = filetype.AddType(".sbom.json", "application/json")
+	jsonType     = filetype.AddType(".json", "application/json")
 	sbomType     = filetype.AddType(".sbom", "application/octet-stream")
 	pubType      = filetype.AddType(".pub", "text/plain")
 )
@@ -166,6 +167,11 @@ func (a *Asset) Classify() {
 			a.Type = Key
 		case sbomJsonType, sbomType:
 			a.Type = SBOM
+		case jsonType:
+			if strings.Contains(a.Name, ".sbom") {
+				a.Type = SBOM
+			}
+			fallthrough
 		default:
 			a.Type = Unknown
 		}
@@ -275,18 +281,19 @@ var executableMimetypes = []string{
 	"application/vnd.microsoft.portable-executable",
 }
 
-func (a *Asset) Install(id, binDir string) error {
+func (a *Asset) Install(id string, binDir string) error {
 	found := false
+
+	logrus.Tracef("files to process: %d", len(a.Files))
 	for _, file := range a.Files {
+		// Actual path to the downloaded/extracted file
 		fullPath := filepath.Join(a.TempDir, file.Name)
 
-		logrus.Debug("checking file: ", file.Name)
+		logrus.Debug("checking file for installable: ", file.Name)
 		m, err := mimetype.DetectFile(fullPath)
 		if err != nil {
 			return err
 		}
-
-		logrus.Debugf("filename: %s, mimetype: %s", file.Name, m.String())
 
 		if slices.Contains(ignoreFileExtensions, m.Extension()) {
 			logrus.Tracef("ignoring file: %s", file.Name)
@@ -402,11 +409,7 @@ func (a *Asset) doExtract(in io.Reader) error {
 	case matchers.TypeXz:
 		processor = a.processXz
 	default:
-		// Note: we have to assume at this point that it is a binary file that's not wrapped by any archive
-		// format, so we write it to a temp directory and append it to the list of files
-		// TODO: clean this up, it's ugly
-		os.WriteFile(filepath.Join(a.TempDir, filepath.Base(a.DownloadPath)), buf.Bytes(), 0644)
-		a.Files = append(a.Files, &File{Name: filepath.Base(a.DownloadPath), Alias: a.GetName()})
+		processor = a.processDirect
 	}
 
 	if processor != nil {
@@ -424,6 +427,21 @@ func (a *Asset) doExtract(in io.Reader) error {
 	}
 
 	return nil
+}
+
+func (a *Asset) processDirect(in io.Reader) (io.Reader, error) {
+	outFile, err := os.Create(filepath.Join(a.TempDir, filepath.Base(a.DownloadPath)))
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := io.Copy(outFile, in); err != nil {
+		return nil, err
+	}
+
+	a.Files = append(a.Files, &File{Name: filepath.Base(a.DownloadPath), Alias: a.GetName()})
+
+	return nil, nil
 }
 
 func (a *Asset) processZip(in io.Reader) (io.Reader, error) {

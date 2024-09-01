@@ -88,6 +88,7 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 	a.Hash = fmt.Sprintf("%s", hasher.Sum(nil))
 
 	logrus.Tracef("Downloaded asset to: %s", tmpfile.Name())
+	logrus.Tracef(a.ReleaseAsset.GetName())
 
 	return nil
 }

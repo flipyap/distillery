@@ -3,10 +3,12 @@ package gitlab
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/common"
-	"github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/ekristen/distillery/pkg/common"
 )
 
 const baseURL = "https://gitlab.com/api/v4"
