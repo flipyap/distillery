@@ -101,17 +101,27 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 
 	if s.Version == "latest" {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
 			return err
 		}
 
-		s.Version = strings.TrimPrefix(release.GetTagName(), "v")
-	} else {
+		if release != nil {
+			s.Version = strings.TrimPrefix(release.GetTagName(), "v")
+		}
+	}
+
+	if release == nil {
 		releases, _, err := s.client.Repositories.ListReleases(ctx, s.GetOwner(), s.GetRepo(), nil)
 		if err != nil {
 			return err
 		}
 		for _, r := range releases {
+			includePreReleases := s.Options.Settings["include-pre-releases"].(bool)
+			if includePreReleases && r.GetPrerelease() {
+				release = r
+				break
+			}
+
 			if r.GetTagName() == s.Version || r.GetName() == fmt.Sprintf("v%s", s.Version) {
 				release = r
 				break
@@ -153,6 +163,10 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 		}
 
 		params.Page = res.NextPage
+	}
+
+	if len(s.Assets) == 0 {
+		return fmt.Errorf("no assets found")
 	}
 
 	return nil

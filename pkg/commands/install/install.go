@@ -49,10 +49,11 @@ func Execute(c *cli.Context) error {
 		MetadataDir:  metadataDir,
 		DownloadsDir: downloadsDir,
 		Settings: map[string]interface{}{
-			"version":            c.String("version"),
-			"github-token":       c.String("github-token"),
-			"gitlab-token":       c.String("gitlab-token"),
-			"no-checksum-verify": c.Bool("no-checksum-verify"),
+			"version":              c.String("version"),
+			"github-token":         c.String("github-token"),
+			"gitlab-token":         c.String("gitlab-token"),
+			"no-checksum-verify":   c.Bool("no-checksum-verify"),
+			"include-pre-releases": c.Bool("include-pre-releases"),
 		},
 	})
 	if err != nil {
@@ -149,6 +150,12 @@ func Flags() []cli.Flag {
 			Usage:    "GitLab token to use for GitLab API requests",
 			EnvVars:  []string{"DISTILLERY_GITLAB_TOKEN"},
 			Category: "Authentication",
+		},
+		&cli.BoolFlag{
+			Name:    "include-pre-releases",
+			Usage:   "Include pre-releases in the list of available versions",
+			EnvVars: []string{"DISTILLERY_INCLUDE_PRE_RELEASES"},
+			Aliases: []string{"pre"},
 		},
 		&cli.BoolFlag{
 			Name:  "no-checksum-verify",

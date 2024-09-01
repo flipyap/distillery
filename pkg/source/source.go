@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/apex/log"
 	"github.com/ekristen/distillery/pkg/checksum"
 	"os"
 	"strings"
@@ -162,7 +163,7 @@ func (s *Source) verifyChecksum() error {
 		return fmt.Errorf("checksum verification failed")
 	}
 
-	logrus.Info("checksum verified")
+	log.Info("checksum verified")
 
 	return nil
 }
