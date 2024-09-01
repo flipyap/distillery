@@ -133,6 +133,18 @@ func TestAssetTypes(t *testing.T) {
 			name:     "dist-linux-amd64.tar.gz.sha256",
 			fileType: Checksum,
 		},
+		{
+			name:     "dist-linux.nse",
+			fileType: Unknown,
+		},
+		{
+			name:     "dist-linux.deb",
+			fileType: Installer,
+		},
+		{
+			name:     "dist-windows.msi",
+			fileType: Installer,
+		},
 	}
 
 	for _, c := range cases {

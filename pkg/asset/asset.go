@@ -402,7 +402,8 @@ func (a *Asset) doExtract(in io.Reader) error {
 	case matchers.TypeXz:
 		processor = a.processXz
 	default:
-		// write file to temp directory?
+		// Note: we have to assume at this point that it is a binary file that's not wrapped by any archive
+		// format, so we write it to a temp directory and append it to the list of files
 		// TODO: clean this up, it's ugly
 		os.WriteFile(filepath.Join(a.TempDir, filepath.Base(a.DownloadPath)), buf.Bytes(), 0644)
 		a.Files = append(a.Files, &File{Name: filepath.Base(a.DownloadPath), Alias: a.GetName()})
