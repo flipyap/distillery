@@ -40,7 +40,7 @@ func (c *Client) ListReleases(slug string) ([]*Release, error) {
 	req.Header.Add("User-Agent", fmt.Sprintf("%s/%s", common.NAME, common.AppVersion))
 
 	if c.token != "" {
-		//req.Header.Set("PRIVATE-TOKEN", c.token)
+		req.Header.Set("PRIVATE-TOKEN", c.token)
 	}
 
 	resp, err := c.client.Do(req)
@@ -69,7 +69,7 @@ func (c *Client) GetLatestRelease(slug string) (*Release, error) {
 	req.Header.Add("User-Agent", fmt.Sprintf("%s/%s", common.NAME, common.AppVersion))
 
 	if c.token != "" {
-		//req.Header.Set("PRIVATE-TOKEN", c.token)
+		req.Header.Set("PRIVATE-TOKEN", c.token)
 	}
 
 	resp, err := c.client.Do(req)
@@ -99,7 +99,7 @@ func (c *Client) GetRelease(slug, version string) (*Release, error) {
 	req.Header.Add("User-Agent", fmt.Sprintf("%s/%s", common.NAME, common.AppVersion))
 
 	if c.token != "" {
-		//req.Header.Set("PRIVATE-TOKEN", c.token)
+		req.Header.Set("PRIVATE-TOKEN", c.token)
 	}
 
 	resp, err := c.client.Do(req)

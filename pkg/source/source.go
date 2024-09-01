@@ -156,10 +156,10 @@ func (s *Source) verifyChecksum() error {
 		return err
 	}
 
-	logrus.Tracef("Checksum Match: %v", match)
+	logrus.Tracef("checksum match: %v", match)
 
 	if !match {
-		return errors.New("checksum mismatch")
+		return fmt.Errorf("checksum verification failed")
 	}
 
 	logrus.Info("checksum verified")

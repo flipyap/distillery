@@ -29,7 +29,6 @@ func Score(names []string, opts *Options) []Sorted {
 
 	for _, name := range names {
 		var score int
-		var scoringKeys []string
 		var scoringValues = make(map[string]int)
 
 		// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
@@ -47,10 +46,6 @@ func Score(names []string, opts *Options) []Sorted {
 		}
 		for _, name1 := range opts.Names {
 			scoringValues[strings.ToLower(name1)] = 20
-		}
-
-		for key := range scoringValues {
-			scoringKeys = append(scoringKeys, key)
 		}
 
 		for keyMatch, keyScore := range scoringValues {

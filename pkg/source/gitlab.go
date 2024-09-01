@@ -1,4 +1,4 @@
-package source //nolint:dupl
+package source
 
 import (
 	"context"
@@ -48,10 +48,11 @@ func (s *GitLab) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *GitLab) Run(ctx context.Context, version, token string) error {
+func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	token := s.Options.Settings["gitlab-token"].(string)
 	if token != "" {
 		s.client.SetToken(token)
 	}

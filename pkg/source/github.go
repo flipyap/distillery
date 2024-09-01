@@ -161,7 +161,7 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 // FindReleaseAsset - find the asset that matches the current OS and Arch, if multiple matches are found it
 // will attempt to find the best match based on the suffix for the appropriate OS. If no match is found an error
 // is returned.
-func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) { //nolint:funlen,gocyclo
+func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) {
 	// 1. Setup Assets
 	// 2. Determine Asset Type (checksum, archive, other, unknown)
 	// 3. Score Assets

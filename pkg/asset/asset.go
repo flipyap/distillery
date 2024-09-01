@@ -30,7 +30,7 @@ var (
 	ascType      = filetype.AddType("asc", "text/plain")
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
 	sigType      = filetype.AddType("sig", "text/plain")
-	sbomJsonType = filetype.AddType(".sbom.json", "application/json")
+	sbomJSONType = filetype.AddType(".sbom.json", "application/json")
 	jsonType     = filetype.AddType(".json", "application/json")
 	sbomType     = filetype.AddType(".sbom", "application/octet-stream")
 	pubType      = filetype.AddType(".pub", "text/plain")
@@ -165,7 +165,7 @@ func (a *Asset) Classify() {
 			a.Type = Signature
 		case pemType, pubType:
 			a.Type = Key
-		case sbomJsonType, sbomType:
+		case sbomJSONType, sbomType:
 			a.Type = SBOM
 		case jsonType:
 			if strings.Contains(a.Name, ".sbom") {
@@ -359,6 +359,7 @@ func (a *Asset) Install(id string, binDir string) error {
 }
 
 func (a *Asset) Cleanup() error {
+	logrus.WithField("asset", a.GetName()).Tracef("cleaning up temp dir: %s", a.TempDir)
 	return os.RemoveAll(a.TempDir)
 }
 
@@ -457,7 +458,7 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 			return nil, err
 		}
 
-		target := filepath.Join(a.TempDir, header.Name) //nolint:gosec
+		target := filepath.Join(a.TempDir, header.Name)
 		logrus.Tracef("zip > target %s", target)
 
 		if header.Mode().IsDir() {
@@ -480,7 +481,7 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 		}
 
 		// copy over contents
-		if _, err := io.Copy(f, zr); err != nil { //nolint: gosec
+		if _, err := io.Copy(f, zr); err != nil {
 			return nil, err
 		}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func Execute(c *cli.Context) error {
@@ -15,6 +16,8 @@ func Execute(c *cli.Context) error {
 	}
 
 	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
+
+	bins := make(map[string]map[string]string)
 
 	_ = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -31,12 +34,32 @@ func Execute(c *cli.Context) error {
 		}
 
 		if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
+			simpleName := info.Name()
+			version := "latest"
+			parts := strings.Split(info.Name(), "@")
+			if len(parts) > 1 {
+				simpleName = parts[0]
+				version = parts[1]
+			}
+
+			if _, ok := bins[simpleName]; !ok {
+				bins[simpleName] = make(map[string]string)
+			}
+
+			bins[simpleName][version] = path
+
 			return nil
 		}
 
-		fmt.Println("path: ", path)
 		return nil
 	})
+
+	for name, paths := range bins {
+		fmt.Println("> ", name)
+		for version, path := range paths {
+			fmt.Println("  - ", version, path)
+		}
+	}
 
 	return nil
 }

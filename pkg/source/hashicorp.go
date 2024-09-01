@@ -1,4 +1,4 @@
-package source //nolint:dupl
+package source
 
 import (
 	"context"
