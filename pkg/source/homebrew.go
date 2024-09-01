@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/ekristen/distillery/pkg/clients/homebrew"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/osconfig"
-	"github.com/ekristen/distillery/pkg/source/homebrew"
 )
 
 type Homebrew struct {

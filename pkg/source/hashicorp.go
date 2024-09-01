@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	hashicorp2 "github.com/ekristen/distillery/pkg/clients/hashicorp"
 	"path/filepath"
 
 	"github.com/apex/log"
@@ -13,13 +14,12 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/osconfig"
-	"github.com/ekristen/distillery/pkg/source/hashicorp"
 )
 
 type Hashicorp struct {
 	Source
 
-	client *hashicorp.Client
+	client *hashicorp2.Client
 
 	Owner   string
 	Repo    string
@@ -51,9 +51,9 @@ func (s *Hashicorp) GetDownloadsDir() string {
 func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
-	s.client = hashicorp.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	s.client = hashicorp2.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
-	var release *hashicorp.Release
+	var release *hashicorp2.Release
 
 	if s.Version == "latest" {
 		releases, err := s.client.ListReleases(s.Repo, nil)

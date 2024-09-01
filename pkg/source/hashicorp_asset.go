@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/ekristen/distillery/pkg/clients/hashicorp"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/common"
-	"github.com/ekristen/distillery/pkg/source/hashicorp"
 )
 
 type HashicorpAsset struct {

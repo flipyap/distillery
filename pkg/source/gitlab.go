@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	gitlab2 "github.com/ekristen/distillery/pkg/clients/gitlab"
 	"path/filepath"
 
 	"github.com/gregjones/httpcache"
@@ -11,19 +12,18 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/osconfig"
-	"github.com/ekristen/distillery/pkg/source/gitlab"
 )
 
 type GitLab struct {
 	Source
 
-	client *gitlab.Client
+	client *gitlab2.Client
 
 	Owner   string
 	Repo    string
 	Version string
 
-	Release *gitlab.Release
+	Release *gitlab2.Release
 
 	Assets []*GitLabAsset
 }
@@ -51,7 +51,7 @@ func (s *GitLab) GetDownloadsDir() string {
 func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
-	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	s.client = gitlab2.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	token := s.Options.Settings["gitlab-token"].(string)
 	if token != "" {
 		s.client.SetToken(token)
