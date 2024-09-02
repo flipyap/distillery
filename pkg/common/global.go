@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/apex/log"
+	clilog "github.com/apex/log/handlers/cli"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -41,6 +42,8 @@ func Flags() []cli.Flag {
 }
 
 func Before(c *cli.Context) error {
+	log.SetHandler(clilog.Default)
+
 	formatter := &logrus.TextFormatter{
 		DisableColors: c.Bool("log-disable-color"),
 		FullTimestamp: c.Bool("log-full-timestamp"),

@@ -66,7 +66,7 @@ func (s *Source) GetArch() string {
 }
 
 func (s *Source) Download(ctx context.Context) error {
-	logrus.Info("download called")
+	log.Info("downloading assets")
 	if s.Binary != nil {
 		if err := s.Binary.Download(ctx); err != nil {
 			return err

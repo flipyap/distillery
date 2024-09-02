@@ -137,6 +137,8 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		return fmt.Errorf("release not found")
 	}
 
+	log.Infof("installing version: %s", release.GetTagName())
+
 	s.Release = release
 
 	return nil

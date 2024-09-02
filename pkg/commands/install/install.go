@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	clilog "github.com/apex/log/handlers/cli"
-
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
@@ -17,9 +15,6 @@ import (
 )
 
 func Execute(c *cli.Context) error {
-	log.SetHandler(clilog.Default)
-	log.SetLevel(log.DebugLevel)
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -37,6 +32,10 @@ func Execute(c *cli.Context) error {
 	_ = os.MkdirAll(binDir, 0755)
 	_ = os.MkdirAll(metadataDir, 0755)
 	_ = os.MkdirAll(downloadsDir, 0755)
+
+	if c.Args().First() == "ekristen/distillery" {
+		_ = c.Set("include-pre-releases", "true")
+	}
 
 	src, err := source.New(c.Args().First(), &source.Options{
 		OS:           c.String("os"),
@@ -65,6 +64,10 @@ func Execute(c *cli.Context) error {
 	log.Infof("version: %s", c.String("version"))
 	log.Infof("     os: %s", c.String("os"))
 	log.Infof("   arch: %s", c.String("arch"))
+
+	if c.Bool("include-pre-releases") {
+		log.Infof("including pre-releases")
+	}
 
 	if err := src.Run(c.Context, c.String("version"), c.String("github-token")); err != nil {
 		return err
