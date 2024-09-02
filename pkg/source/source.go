@@ -151,7 +151,12 @@ func (s *Source) verifySignature() error {
 
 func (s *Source) verifyChecksum() error {
 	if v, ok := s.Options.Settings["no-checksum-verify"]; ok && v.(bool) {
-		logrus.Warn("skipping checksum verification")
+		log.Warn("skipping checksum verification")
+		return nil
+	}
+
+	if s.Checksum == nil {
+		log.Warn("skipping checksum verification (no checksum)")
 		return nil
 	}
 
