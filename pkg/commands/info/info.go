@@ -36,12 +36,10 @@ func Execute(c *cli.Context) error {
 	log.Infof("distillery/%s", common.AppVersion.Summary)
 	log.Infof("     os: %s", runtime.GOOS)
 	log.Infof("   arch: %s", runtime.GOARCH)
-	log.Infof("  cache: %s", cacheDir)
 	log.Infof("   home: %s", homeDir)
 	log.Infof("    bin: %s", binDir)
 	log.Infof("    opt: %s", optDir)
-	log.Infof("   meta: %s", metadataDir)
-	log.Infof("  downl: %s", downloadsDir)
+	log.Infof("  cache: %s", filepath.Join(cacheDir, common.NAME))
 
 	log.Warnf("To cleanup all of distillery, remove the following directories:")
 	log.Warnf("  - %s", filepath.Join(cacheDir, common.NAME))

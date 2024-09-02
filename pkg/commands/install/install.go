@@ -2,7 +2,6 @@ package install
 
 import (
 	"fmt"
-
 	"os"
 	"path/filepath"
 	"runtime"
