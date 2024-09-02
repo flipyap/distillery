@@ -30,8 +30,6 @@ func Execute(c *cli.Context) error {
 
 	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
 	optDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "opt")
-	metadataDir := filepath.Join(cacheDir, common.NAME, "metadata")
-	downloadsDir := filepath.Join(cacheDir, common.NAME, "downloads")
 
 	log.Infof("distillery/%s", common.AppVersion.Summary)
 	log.Infof("     os: %s", runtime.GOOS)
