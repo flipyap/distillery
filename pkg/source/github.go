@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
+
+	"github.com/ekristen/distillery/pkg/asset"
 )
 
 type GitHub struct {
@@ -46,6 +47,7 @@ func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
 }
 
+// sourceRun - run the source specific logic
 func (s *GitHub) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
@@ -67,6 +69,7 @@ func (s *GitHub) sourceRun(ctx context.Context) error {
 	return nil
 }
 
+// Run - run the source
 func (s *GitHub) Run(ctx context.Context) error {
 	if err := s.sourceRun(ctx); err != nil {
 		return err

@@ -37,6 +37,7 @@ var (
 	ignoreFileExtensions = []string{
 		".txt",
 		".sbom",
+		".json",
 	}
 
 	executableMimetypes = []string{

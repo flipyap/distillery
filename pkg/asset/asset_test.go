@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -300,6 +301,8 @@ func TestAssetExtract(t *testing.T) {
 func TestAssetInstall(t *testing.T) {
 	cases := []struct {
 		name          string
+		os            string
+		arch          string
 		fileType      Type
 		downloadFile  string
 		expectedFiles []string
@@ -307,6 +310,8 @@ func TestAssetInstall(t *testing.T) {
 	}{
 		{
 			name:     "dist-linux-amd64.tar.gz",
+			os:       "linux",
+			arch:     "amd64",
 			fileType: Archive,
 			downloadFile: createTarGz(t, []internalFile{
 				{
@@ -320,7 +325,24 @@ func TestAssetInstall(t *testing.T) {
 			},
 		},
 		{
+			name: "dist-darwin-amd64.tar.gz",
+			os:   "darwin",
+			arch: "amd64",
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "test-binary",
+					mode:    0755,
+					content: []byte{0xFE, 0xED, 0xFA, 0xCE},
+				},
+			}),
+			expectedFiles: []string{
+				"test-binary",
+			},
+		},
+		{
 			name:         "dist-linux-amd64.zip",
+			os:           "linux",
+			arch:         "amd64",
 			fileType:     Archive,
 			downloadFile: createZip(t, "test-binary", []byte{0x7F, 0x45, 0x4C, 0x46}),
 			expectedFiles: []string{
@@ -329,6 +351,8 @@ func TestAssetInstall(t *testing.T) {
 		},
 		{
 			name:     "dist-linux-amd64.tar.bz2",
+			os:       "linux",
+			arch:     "amd64",
 			fileType: Archive,
 			downloadFile: createTarBz2(t, []internalFile{
 				{
@@ -343,6 +367,8 @@ func TestAssetInstall(t *testing.T) {
 		},
 		{
 			name:     "dist-linux-amd64.tar.xz",
+			os:       "linux",
+			arch:     "amd64",
 			fileType: Archive,
 			downloadFile: createTarXz(t, []internalFile{
 				{
@@ -357,22 +383,28 @@ func TestAssetInstall(t *testing.T) {
 		},
 		{
 			name:         "dist-darwin-amd64",
+			os:           "darwin",
+			arch:         "amd64",
 			fileType:     Binary,
 			downloadFile: createFile(t, []byte{0xFE, 0xED, 0xFA, 0xCE}),
 			expectedFiles: []string{
-				"dist-darwin",
+				"dist",
 			},
 		},
 		{
-			name:         "windows-executable",
+			name:         "test.exe",
+			os:           "windows",
+			arch:         "amd64",
 			fileType:     Binary,
 			downloadFile: createFile(t, []byte{0x4D, 0x5A}),
 			expectedFiles: []string{
-				"windows-executable",
+				"test.exe",
 			},
 		},
 		{
 			name:     "dist-linux-multi-amd64.tar.gz",
+			os:       "linux",
+			arch:     "amd64",
 			fileType: Archive,
 			downloadFile: createTarGz(t, []internalFile{
 				{
@@ -405,7 +437,7 @@ func TestAssetInstall(t *testing.T) {
 			assert.NoError(t, err)
 			defer os.RemoveAll(binDir)
 
-			asset := New(c.name, c.name, "linux", "amd64", "1.0.0")
+			asset := New(c.name, c.name, c.os, c.arch, "1.0.0")
 			asset.DownloadPath = c.downloadFile
 
 			err = asset.Extract()
@@ -418,11 +450,29 @@ func TestAssetInstall(t *testing.T) {
 				destBinaryName := fmt.Sprintf("test-id-%s", filepath.Base(fileName))
 				destBinPath := filepath.Join(binDir, destBinaryName)
 
+				baseLinkName := filepath.Join(binDir, filepath.Base(fileName))
+				versionedLinkName := filepath.Join(binDir, fmt.Sprintf("%s@%s", filepath.Base(fileName), "1.0.0"))
+
 				_, err = os.Stat(destBinPath)
 				assert.NoError(t, err)
+
+				if c.os == runtime.GOOS && c.arch == runtime.GOARCH {
+					_, err = os.Stat(baseLinkName)
+					assert.NoError(t, err)
+
+					linkPath, err := os.Readlink(baseLinkName)
+					assert.NoError(t, err)
+					assert.Equal(t, destBinaryName, filepath.Base(linkPath))
+
+					_, err = os.Stat(versionedLinkName)
+					assert.NoError(t, err)
+
+					linkPath, err = os.Readlink(versionedLinkName)
+					assert.NoError(t, err)
+					assert.Equal(t, destBinaryName, filepath.Base(linkPath))
+				}
 			}
 
-			fmt.Println(binDir)
 			_ = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -432,18 +482,7 @@ func TestAssetInstall(t *testing.T) {
 					return nil
 				}
 
-				fileInfo, err := os.Lstat(path)
-				if err != nil {
-					return err
-				}
-
-				if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
-					fmt.Println("symlink:", path)
-
-					return nil
-				}
-
-				fmt.Println("file:", path)
+				fmt.Println(">", path)
 
 				return nil
 			})
@@ -453,6 +492,7 @@ func TestAssetInstall(t *testing.T) {
 
 // -- helper functions below --
 
+// createEmptyZip creates an empty zip file
 func createEmptyZip(t *testing.T) string {
 	t.Helper()
 
@@ -468,6 +508,7 @@ func createEmptyZip(t *testing.T) string {
 	return tmpFile.Name()
 }
 
+// createFile creates a temporary file with the given content
 func createFile(t *testing.T, content []byte) string {
 	t.Helper()
 
@@ -482,6 +523,7 @@ func createFile(t *testing.T, content []byte) string {
 	return tmpFile.Name()
 }
 
+// createTar creates a tar archive with the given files
 func createTar(t *testing.T, out io.Writer, files []internalFile) error {
 	t.Helper()
 
@@ -526,6 +568,7 @@ func createTar(t *testing.T, out io.Writer, files []internalFile) error {
 	return nil
 }
 
+// createTarGz creates a tar.gz archive with the given files
 func createTarGz(t *testing.T, files []internalFile) string {
 	t.Helper()
 
@@ -544,6 +587,7 @@ func createTarGz(t *testing.T, files []internalFile) string {
 	return tmpFile.Name()
 }
 
+// createTarBz2 creates a tar.bz2 archive with the given files
 func createTarBz2(t *testing.T, files []internalFile) string {
 	t.Helper()
 
@@ -563,6 +607,7 @@ func createTarBz2(t *testing.T, files []internalFile) string {
 	return tmpFile.Name()
 }
 
+// createTarXz creates a tar.xz archive with the given files
 func createTarXz(t *testing.T, files []internalFile) string {
 	t.Helper()
 
@@ -582,6 +627,7 @@ func createTarXz(t *testing.T, files []internalFile) string {
 	return tmpFile.Name()
 }
 
+// createZip creates a zip archive with the given content
 func createZip(t *testing.T, fileName string, content []byte) string {
 	t.Helper()
 
