@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
@@ -16,6 +18,7 @@ import (
 	"github.com/ekristen/distillery/pkg/checksum"
 	"github.com/ekristen/distillery/pkg/cosign"
 	"github.com/ekristen/distillery/pkg/osconfig"
+	"github.com/ekristen/distillery/pkg/score"
 )
 
 const (
@@ -46,11 +49,9 @@ type Options struct {
 }
 
 type Source struct {
-	Options  *Options
-	OSConfig *osconfig.OS
-
-	File string
-
+	Options   *Options
+	OSConfig  *osconfig.OS
+	Assets    []asset.IAsset
 	Binary    asset.IAsset
 	Signature asset.IAsset
 	Checksum  asset.IAsset
@@ -63,6 +64,138 @@ func (s *Source) GetOS() string {
 
 func (s *Source) GetArch() string {
 	return s.Options.Arch
+}
+
+// Discover will attempt to discover and categorize the assets provided
+// TODO(ek): split up and refactor this function
+func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolint:funlen,gocyclo
+	fileScoring := map[asset.Type][]string{}
+	fileScored := map[asset.Type][]score.Sorted{}
+	for _, a := range assets {
+		if _, ok := fileScoring[a.GetType()]; !ok {
+			fileScoring[a.GetType()] = []string{}
+		}
+		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
+	}
+	// Note: first pass we want to look for just binaries and score them
+	for k, v := range fileScoring {
+		if k != asset.Binary && k != asset.Unknown && k != asset.Archive {
+			continue
+		}
+
+		detectedOS := s.OSConfig.GetOS()
+		arch := s.OSConfig.GetArchitectures()
+		ext := s.OSConfig.GetExtensions()
+
+		if _, ok := fileScored[k]; !ok {
+			fileScored[k] = []score.Sorted{}
+		}
+
+		fileScored[k] = score.Score(v, &score.Options{
+			OS:         detectedOS,
+			Arch:       arch,
+			Extensions: ext,
+			Names:      names,
+		})
+
+		if len(fileScored[k]) > 0 {
+			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
+		}
+	}
+
+	for _, a := range assets {
+		if a.GetType() != asset.Binary && a.GetType() != asset.Unknown && a.GetType() != asset.Archive {
+			continue
+		}
+
+		for k, v := range fileScored {
+			if a.GetType() != k {
+				continue
+			}
+
+			vv := v[0]
+			if a.GetName() == vv.Key {
+				if vv.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
+					log.Error("no matching asset found, score too low")
+					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", a.GetName(), vv.Value)
+					return fmt.Errorf("no matching asset found, score too low")
+				}
+
+				s.Binary = a
+			}
+		}
+	}
+
+	// Note: second pass we want to look for everything else, using binary results to help score
+	for k, v := range fileScoring {
+		if k == asset.Binary || k == asset.Unknown || k == asset.Archive {
+			continue
+		}
+
+		detectedOS := s.OSConfig.GetOS()
+		arch := s.OSConfig.GetArchitectures()
+		ext := s.OSConfig.GetExtensions()
+
+		if k == asset.Key {
+			ext = []string{"key", "pub", "pem"}
+			detectedOS = []string{}
+			arch = []string{}
+		} else if k == asset.Signature {
+			ext = []string{"sig", "asc"}
+			detectedOS = []string{}
+			arch = []string{}
+		} else if k == asset.Checksum {
+			ext = []string{"sha256", "md5", "sha1", "txt"}
+			detectedOS = []string{}
+			arch = []string{}
+		}
+
+		if _, ok := fileScored[k]; !ok {
+			fileScored[k] = []score.Sorted{}
+		}
+
+		fileScored[k] = score.Score(v, &score.Options{
+			OS:         detectedOS,
+			Arch:       arch,
+			Extensions: ext,
+			Names:      []string{strings.ReplaceAll(s.Binary.GetName(), filepath.Ext(s.Binary.GetName()), "")},
+		})
+
+		if len(fileScored[k]) > 0 {
+			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
+		}
+	}
+
+	for _, a := range assets {
+		for k, v := range fileScored {
+			vv := v[0]
+
+			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
+				s.Checksum = a
+			}
+			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
+				s.Signature = a
+			}
+			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
+				s.Key = a
+			}
+		}
+	}
+
+	if s.Binary != nil {
+		logrus.Tracef("best binary: %s", s.Binary.GetName())
+	}
+	if s.Checksum != nil {
+		logrus.Tracef("best checksum: %s", s.Checksum.GetName())
+	}
+	if s.Signature != nil {
+		logrus.Tracef("best signature: %s", s.Signature.GetName())
+	}
+	if s.Key != nil {
+		logrus.Tracef("best key: %s", s.Key.GetName())
+	}
+
+	return nil
 }
 
 func (s *Source) Download(ctx context.Context) error {

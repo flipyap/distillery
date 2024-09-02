@@ -33,7 +33,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.deb",
-					Value: 15,
+					Value: 70,
 				},
 			},
 		},
@@ -58,7 +58,27 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64",
-					Value: 15,
+					Value: 70,
+				},
+			},
+		},
+		{
+			name: "unknown binary",
+			names: []string{
+				"something-linux",
+			},
+			opts: &Options{
+				OS:   []string{"macos"},
+				Arch: []string{"amd64"},
+				Extensions: []string{
+					types.Unknown.Extension,
+				},
+				Names: []string{"something"},
+			},
+			expected: []Sorted{
+				{
+					Key:   "something-linux",
+					Value: 10,
 				},
 			},
 		},
@@ -76,7 +96,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.sig",
-					Value: 50,
+					Value: 100,
 				},
 			},
 		},
@@ -93,7 +113,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.pem",
-					Value: 45,
+					Value: 110,
 				},
 			},
 		},
@@ -105,14 +125,17 @@ func TestScore(t *testing.T) {
 				"SHASUMS",
 			},
 			opts: &Options{
-				OS:         []string{"linux"},
-				Arch:       []string{"amd64"},
+				OS:         []string{},
+				Arch:       []string{},
 				Extensions: []string{"txt"},
+				Names: []string{
+					"checksums",
+				},
 			},
 			expected: []Sorted{
 				{
 					Key:   "checksums.txt",
-					Value: 15,
+					Value: 30,
 				},
 				{
 					Key:   "SHA256SUMS",

@@ -7,14 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
-	"github.com/sirupsen/logrus"
-
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/hashicorp"
-	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 const HashicorpSource = "hashicorp"
@@ -27,8 +24,6 @@ type Hashicorp struct {
 	Owner   string
 	Repo    string
 	Version string
-
-	Assets []*HashicorpAsset
 }
 
 func (s *Hashicorp) GetSource() string {
@@ -51,7 +46,7 @@ func (s *Hashicorp) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Hashicorp) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
+func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = hashicorp.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -85,9 +80,6 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error { //nolint:gocyc
 
 	log.Infof("installing %s@%s", release.Name, release.Version)
 
-	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
-
-	s.Assets = make([]*HashicorpAsset, 0)
 	for _, build := range release.Builds {
 		s.Assets = append(s.Assets, &HashicorpAsset{
 			Asset:     asset.New(filepath.Base(build.URL), "", s.GetOS(), s.GetArch(), s.Version),
@@ -97,33 +89,11 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error { //nolint:gocyc
 		})
 	}
 
-	for _, a := range s.Assets {
-		a.Score(&asset.ScoreOptions{
-			OS:         detectedOS.GetOS(),
-			Arch:       detectedOS.GetArchitectures(),
-			Extensions: detectedOS.GetExtensions(),
-		})
-
-		logrus.Debugf("name: %s, score: %d", a.GetName(), a.GetScore())
+	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
+		return err
 	}
 
-	var best *HashicorpAsset
-	for _, a := range s.Assets {
-		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil ||
-			a.GetScore() > best.GetScore() &&
-				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
-			best = a
-		}
-	}
-
-	s.Binary = best
-
-	if best == nil {
-		return fmt.Errorf("unable to find best asset")
-	}
-
-	if err := best.Download(ctx); err != nil {
+	if err := s.Download(ctx); err != nil {
 		return err
 	}
 

@@ -24,23 +24,23 @@ func Score(names []string, opts *Options) []Sorted {
 
 		// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
 		// a rust or go binary distribution
-		scoringValues["update"] = -20
+		scoringValues["update"] = -100
 
 		for _, os1 := range opts.OS {
-			scoringValues[strings.ToLower(os1)] = 10
+			scoringValues[strings.ToLower(os1)] = 40
 		}
 		for _, arch := range opts.Arch {
-			scoringValues[strings.ToLower(arch)] = 5
+			scoringValues[strings.ToLower(arch)] = 30
 		}
 		for _, ext := range opts.Extensions {
-			scoringValues[strings.ToLower(ext)] = 15
+			scoringValues[strings.ToLower(ext)] = 20
 		}
 		for _, name1 := range opts.Names {
-			scoringValues[strings.ToLower(name1)] = 20
+			scoringValues[strings.ToLower(name1)] = 10
 		}
 
 		for keyMatch, keyScore := range scoringValues {
-			if keyScore == 15 { // handle extensions special
+			if keyScore == 20 { // handle extensions special
 				if ext := strings.TrimPrefix(filepath.Ext(strings.ToLower(name)), "."); ext != "" {
 					for _, fileExt := range opts.Extensions {
 						if filetype.GetType(ext) == filetype.GetType(fileExt) {

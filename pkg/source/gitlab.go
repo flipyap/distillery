@@ -5,13 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/gregjones/httpcache"
-	"github.com/gregjones/httpcache/diskcache"
-	"github.com/sirupsen/logrus"
-
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/gitlab"
-	"github.com/ekristen/distillery/pkg/osconfig"
+	"github.com/gregjones/httpcache"
+	"github.com/gregjones/httpcache/diskcache"
 )
 
 type GitLab struct {
@@ -24,8 +21,6 @@ type GitLab struct {
 	Version string
 
 	Release *gitlab.Release
-
-	Assets []*GitLabAsset
 }
 
 func (s *GitLab) GetSource() string {
@@ -48,7 +43,7 @@ func (s *GitLab) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *GitLab) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
+func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -86,37 +81,11 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
 		})
 	}
 
-	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
-
-	for _, a := range s.Assets {
-		a.Score(&asset.ScoreOptions{
-			OS:         detectedOS.GetOS(),
-			Arch:       detectedOS.GetArchitectures(),
-			Extensions: detectedOS.GetExtensions(),
-		})
-
-		logrus.Debugf("name: %s, score: %d", a.GetName(), a.GetScore())
+	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
+		return err
 	}
 
-	var best *GitLabAsset
-	for _, a := range s.Assets {
-		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil ||
-			a.GetScore() > best.GetScore() &&
-				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
-			best = a
-		}
-	}
-
-	s.Binary = best
-
-	if best == nil {
-		return fmt.Errorf("unable to find best asset")
-	}
-
-	logrus.Tracef("best: %s", best.GetName())
-
-	if err := best.Download(ctx); err != nil {
+	if err := s.Download(ctx); err != nil {
 		return err
 	}
 

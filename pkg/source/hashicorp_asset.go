@@ -25,7 +25,11 @@ type HashicorpAsset struct {
 }
 
 func (a *HashicorpAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s", a.Hashicorp.GetSource(), a.Hashicorp.GetRepo(), a.Hashicorp.Version)
+	urlHash := sha256.Sum256([]byte(a.Build.URL))
+	urlHashShort := fmt.Sprintf("%x", urlHash)[:9]
+
+	return fmt.Sprintf("%s-%s-%s-%s",
+		a.Hashicorp.GetSource(), a.Hashicorp.GetRepo(), a.Hashicorp.Version, urlHashShort)
 }
 
 func (a *HashicorpAsset) Download(ctx context.Context) error {
@@ -52,7 +56,7 @@ func (a *HashicorpAsset) Download(ctx context.Context) error {
 		return nil
 	}
 
-	logrus.Infof("downloading asset: %s", a.Build.URL)
+	logrus.Debugf("downloading asset: %s", a.Build.URL)
 
 	req, err := http.NewRequestWithContext(context.TODO(), "GET", a.Build.URL, http.NoBody)
 	if err != nil {

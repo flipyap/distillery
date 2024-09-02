@@ -330,7 +330,9 @@ func (a *Asset) Install(id, binDir string) error {
 		// TODO: allow override
 		if runtime.GOOS == a.OS && runtime.GOARCH == a.Arch {
 			logrus.Debugf("creating symlink: %s to %s", defaultBinFilename, destBinFilename)
+			logrus.Debugf("creating symlink: %s to %s", versionedBinFilename, destBinFilename)
 			_ = os.Remove(defaultBinFilename)
+			_ = os.Remove(versionedBinFilename)
 			_ = os.Symlink(destBinFilename, defaultBinFilename)
 			_ = os.Symlink(destBinFilename, versionedBinFilename)
 		}

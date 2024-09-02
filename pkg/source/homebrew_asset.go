@@ -25,7 +25,8 @@ type HomebrewAsset struct {
 }
 
 func (a *HomebrewAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s", a.Homebrew.GetOwner(), a.Homebrew.GetRepo(), a.Homebrew.Version)
+	return fmt.Sprintf("%s-%s-%s-%s",
+		a.Homebrew.GetOwner(), a.Homebrew.GetRepo(), a.Homebrew.Version, a.FileVariant.Sha256[:9])
 }
 
 type GHCRAuth struct {
