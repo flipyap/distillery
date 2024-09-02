@@ -7,17 +7,12 @@ import (
 	"runtime"
 
 	"github.com/apex/log"
-	clilog "github.com/apex/log/handlers/cli"
-
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
 )
 
 func Execute(c *cli.Context) error {
-	log.SetHandler(clilog.Default)
-	log.SetLevel(log.DebugLevel)
-
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err

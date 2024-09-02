@@ -122,6 +122,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		for _, r := range releases {
 			includePreReleases := s.Options.Settings["include-pre-releases"].(bool)
 			if includePreReleases && r.GetPrerelease() {
+				s.Version = strings.TrimPrefix(r.GetTagName(), "v")
 				release = r
 				break
 			}

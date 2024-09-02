@@ -10,6 +10,7 @@ import (
 
 	"github.com/ekristen/distillery/pkg/common"
 
+	_ "github.com/ekristen/distillery/pkg/commands/clean"
 	_ "github.com/ekristen/distillery/pkg/commands/info"
 	_ "github.com/ekristen/distillery/pkg/commands/install"
 	_ "github.com/ekristen/distillery/pkg/commands/list"
