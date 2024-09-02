@@ -51,7 +51,7 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 	a.DownloadPath = assetFile
 	a.Extension = filepath.Ext(a.DownloadPath)
 
-	assetFileHash := assetFile + ".sha256"
+	assetFileHash := fmt.Sprintf("%s.sha256", assetFile)
 
 	stats, err := os.Stat(assetFileHash)
 	if err != nil && !os.IsNotExist(err) {
@@ -68,13 +68,15 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 	hasher := sha256.New()
 
 	// Create a temporary file
-	tmpfile, err := os.Create(assetFile)
+	tmpFile, err := os.Create(assetFile)
 	if err != nil {
 		return err
 	}
-	defer tmpfile.Close()
+	defer func(tmpFile *os.File) {
+		_ = tmpFile.Close()
+	}(tmpFile)
 
-	multiWriter := io.MultiWriter(tmpfile, hasher)
+	multiWriter := io.MultiWriter(tmpFile, hasher)
 
 	// Write the asset's content to the temporary file
 	_, err = io.Copy(multiWriter, rc)
@@ -82,12 +84,12 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Tracef("hash: %s", fmt.Sprintf("%x", hasher.Sum(nil)))
+	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
 
-	_ = os.WriteFile(assetFile+".sha256", []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
-	a.Hash = fmt.Sprintf("%s", hasher.Sum(nil))
+	_ = os.WriteFile(fmt.Sprintf("%s.sha256", assetFile), []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
+	a.Hash = string(hasher.Sum(nil))
 
-	logrus.Tracef("Downloaded asset to: %s", tmpfile.Name())
+	logrus.Tracef("Downloaded asset to: %s", tmpFile.Name())
 	logrus.Tracef(a.ReleaseAsset.GetName())
 
 	return nil

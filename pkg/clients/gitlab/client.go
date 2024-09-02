@@ -1,6 +1,7 @@
 package gitlab
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,10 +30,10 @@ func (c *Client) SetToken(token string) {
 }
 
 func (c *Client) ListReleases(slug string) ([]*Release, error) {
-	url := fmt.Sprintf("%s/projects/%s/releases", baseURL, url.QueryEscape(slug))
-	logrus.Tracef("GET %s", url)
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases", baseURL, url.QueryEscape(slug))
+	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +59,10 @@ func (c *Client) ListReleases(slug string) ([]*Release, error) {
 }
 
 func (c *Client) GetLatestRelease(slug string) (*Release, error) {
-	url := fmt.Sprintf("%s/projects/%s/releases?per_page=1", baseURL, url.QueryEscape(slug))
-	logrus.Tracef("GET %s", url)
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases?per_page=1", baseURL, url.QueryEscape(slug))
+	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +85,13 @@ func (c *Client) GetLatestRelease(slug string) (*Release, error) {
 	}
 
 	return releases[0], nil
-
 }
 
 func (c *Client) GetRelease(slug, version string) (*Release, error) {
-	url := fmt.Sprintf("%s/projects/%s/releases/%s", baseURL, url.QueryEscape(slug), url.QueryEscape(version))
-	logrus.Tracef("GET %s", url)
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases/%s", baseURL, url.QueryEscape(slug), url.QueryEscape(version))
+	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

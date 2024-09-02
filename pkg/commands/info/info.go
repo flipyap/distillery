@@ -2,12 +2,12 @@ package info
 
 import (
 	"fmt"
-
-	"github.com/apex/log"
-	clilog "github.com/apex/log/handlers/cli"
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/apex/log"
+	clilog "github.com/apex/log/handlers/cli"
 
 	"github.com/urfave/cli/v2"
 

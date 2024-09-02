@@ -1,6 +1,7 @@
 package hashicorp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -26,7 +27,8 @@ func NewClient(client *http.Client) *Client {
 
 // ListProducts returns a list of products available from the HashiCorp Releases API
 func (c *Client) ListProducts() (Products, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://api.releases.hashicorp.com/v1/products", nil)
+	req, err := http.NewRequestWithContext(
+		context.TODO(), http.MethodGet, "https://api.releases.hashicorp.com/v1/products", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +68,8 @@ func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Rel
 		licenseClass = fmt.Sprintf("license_class=%s", opts.LicenseClass)
 	}
 
-	req, err := http.NewRequest(http.MethodGet,
-		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s?%s", product, licenseClass), nil)
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet,
+		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s?%s", product, licenseClass), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +89,7 @@ func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Rel
 
 	if !opts.PreReleases {
 		for i, release := range data {
-			if release.IsPrerelease == true {
+			if release.IsPrerelease {
 				if i < len(data)-1 {
 					data = append(data[:i], data[i+1:]...)
 				} else {
@@ -102,11 +104,11 @@ func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Rel
 
 // GetVersion returns a specific release for a product from the HashiCorp Releases API
 func (c *Client) GetVersion(product, version string) (*Release, error) {
-	licenseClass := fmt.Sprintf("license_class=oss")
+	licenseClass := "license_class=oss"
 
-	req, err := http.NewRequest(http.MethodGet,
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet,
 		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s/%s?%s",
-			product, version, licenseClass), nil)
+			product, version, licenseClass), http.NoBody)
 	if err != nil {
 		return nil, err
 	}

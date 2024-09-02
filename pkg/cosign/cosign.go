@@ -65,7 +65,7 @@ func VerifySignature(pubKey *ecdsa.PublicKey, data, signature []byte) (bool, err
 }
 
 // decodeSignature decodes a base64 encoded signature into r and s values.
-func decodeSignature(signature []byte) (*big.Int, *big.Int, error) {
+func decodeSignature(signature []byte) (*big.Int, *big.Int, error) { //nolint:gocritic
 	sig, err := base64.StdEncoding.DecodeString(string(signature))
 	if err != nil {
 		return nil, nil, err

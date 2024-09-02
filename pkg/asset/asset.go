@@ -30,12 +30,24 @@ var (
 	ascType      = filetype.AddType("asc", "text/plain")
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
 	sigType      = filetype.AddType("sig", "text/plain")
-	sbomJSONType = filetype.AddType(".sbom.json", "application/json")
-	jsonType     = filetype.AddType(".json", "application/json")
-	sbomType     = filetype.AddType(".sbom", "application/octet-stream")
-	pubType      = filetype.AddType(".pub", "text/plain")
+	sbomJSONType = filetype.AddType("sbom.json", "application/json")
+	jsonType     = filetype.AddType("json", "application/json")
+	sbomType     = filetype.AddType("sbom", "application/octet-stream")
+	pubType      = filetype.AddType("pub", "text/plain")
+
+	ignoreFileExtensions = []string{
+		".txt",
+		".sbom",
+	}
+
+	executableMimetypes = []string{
+		"application/x-mach-binary",
+		"application/x-executable",
+		"application/vnd.microsoft.portable-executable",
+	}
 )
 
+// Type is the type of asset
 type Type int
 
 const (
@@ -49,29 +61,16 @@ const (
 	SBOM
 )
 
-type IAsset interface {
-	GetName() string
-	GetDisplayName() string
-	GetScore() int
-	GetType() Type
-	GetAsset() *Asset
-	GetFiles() []*File
-	GetTempPath() string
-	GetFilePath() string
-	Score(options *ScoreOptions) int
-	Download(context.Context) error
-	Extract() error
-	Install(string, string) error
-	Cleanup() error
-	ID() string
-}
+// processorFunc is a function that processes a reader
+type processorFunc func(io.Reader) (io.Reader, error)
 
-func New(name, displayName, os, arch, version string) *Asset {
+// New creates a new asset
+func New(name, displayName, osName, osArch, version string) *Asset {
 	a := &Asset{
 		Name:        name,
 		DisplayName: displayName,
-		OS:          os,
-		Arch:        arch,
+		OS:          osName,
+		Arch:        osArch,
 		Version:     version,
 		Files:       make([]*File, 0),
 		score:       0,
@@ -152,8 +151,8 @@ type ScoreOptions struct {
 }
 
 // Classify determines the type of asset based on the file extension
-func (a *Asset) Classify() {
-	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); len(ext) > 0 {
+func (a *Asset) Classify() { //nolint:gocyclo
+	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
 		switch filetype.GetType(ext) {
 		case matchers.TypeDeb, matchers.TypeRpm, msiType:
 			a.Type = Installer
@@ -168,10 +167,11 @@ func (a *Asset) Classify() {
 		case sbomJSONType, sbomType:
 			a.Type = SBOM
 		case jsonType:
-			if strings.Contains(a.Name, ".sbom") {
+			if strings.Contains(a.Name, "sbom") {
 				a.Type = SBOM
+			} else {
+				a.Type = Unknown
 			}
-			fallthrough
 		default:
 			a.Type = Unknown
 		}
@@ -196,7 +196,6 @@ func (a *Asset) Classify() {
 
 // Score returns the score of the asset based on the options provided
 func (a *Asset) Score(opts *ScoreOptions) int {
-	var scoringKeys []string
 	var scoringValues = make(map[string]int)
 
 	// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
@@ -211,9 +210,6 @@ func (a *Asset) Score(opts *ScoreOptions) int {
 	}
 	for _, ext := range opts.Extensions {
 		scoringValues[strings.ToLower(ext)] = 15
-	}
-	for key := range scoringValues {
-		scoringKeys = append(scoringKeys, key)
 	}
 
 	if !a.IsSupportedExtension() {
@@ -231,7 +227,7 @@ func (a *Asset) Score(opts *ScoreOptions) int {
 }
 
 func (a *Asset) IsSupportedExtension() bool {
-	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); len(ext) > 0 {
+	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
 		switch filetype.GetType(ext) {
 		case matchers.TypeGz, types.Unknown, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, matchers.TypeExe:
 			break
@@ -270,18 +266,7 @@ func (a *Asset) copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-var ignoreFileExtensions = []string{
-	".txt",
-	".sbom",
-}
-
-var executableMimetypes = []string{
-	"application/x-mach-binary",
-	"application/x-executable",
-	"application/vnd.microsoft.portable-executable",
-}
-
-func (a *Asset) Install(id string, binDir string) error {
+func (a *Asset) Install(id, binDir string) error {
 	found := false
 
 	logrus.Tracef("files to process: %d", len(a.Files))
@@ -380,8 +365,6 @@ func (a *Asset) Extract() error {
 
 	return a.doExtract(fileHandler)
 }
-
-type processorFunc func(io.Reader) (io.Reader, error)
 
 func (a *Asset) doExtract(in io.Reader) error {
 	var buf bytes.Buffer
@@ -491,10 +474,9 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 
 		a.Files = append(a.Files, &File{Name: header.Name})
 		logrus.Tracef("zip > create file %s", target)
-
 	}
+
 	if len(a.Files) == 0 {
-		//return nil, fmt.Errorf("no files found in zip archive. PackagePath [%s]", f.opts.PackagePath)
 		return nil, fmt.Errorf("no files found in zip archive")
 	}
 

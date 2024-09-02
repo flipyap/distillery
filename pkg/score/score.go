@@ -1,20 +1,11 @@
 package score
 
 import (
-	"github.com/h2non/filetype"
 	"path/filepath"
 	"sort"
 	"strings"
-)
 
-var (
-	msiType      = filetype.AddType("msi", "application/octet-stream")
-	ascType      = filetype.AddType("asc", "text/plain")
-	pemType      = filetype.AddType("pem", "application/x-pem-file")
-	sigType      = filetype.AddType("sig", "text/plain")
-	sbomJsonType = filetype.AddType(".sbom.json", "application/json")
-	sbomType     = filetype.AddType(".sbom", "application/octet-stream")
-	pubType      = filetype.AddType(".pub", "text/plain")
+	"github.com/h2non/filetype"
 )
 
 type Options struct {
@@ -50,7 +41,7 @@ func Score(names []string, opts *Options) []Sorted {
 
 		for keyMatch, keyScore := range scoringValues {
 			if keyScore == 15 { // handle extensions special
-				if ext := strings.TrimPrefix(filepath.Ext(strings.ToLower(name)), "."); len(ext) > 0 {
+				if ext := strings.TrimPrefix(filepath.Ext(strings.ToLower(name)), "."); ext != "" {
 					for _, fileExt := range opts.Extensions {
 						if filetype.GetType(ext) == filetype.GetType(fileExt) {
 							score += keyScore

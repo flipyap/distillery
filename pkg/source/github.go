@@ -3,15 +3,17 @@ package source
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/apex/log"
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/score"
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
 	"github.com/sirupsen/logrus"
-	"path/filepath"
-	"strings"
+
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/score"
 )
 
 type GitHub struct {
@@ -77,7 +79,9 @@ func (s *GitHub) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
-	defer s.Cleanup()
+	defer func(s *GitHub) {
+		_ = s.Cleanup()
+	}(s)
 
 	if err := s.Verify(); err != nil {
 		return err
@@ -99,7 +103,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	var err error
 	var release *github.RepositoryRelease
 
-	if s.Version == "latest" {
+	if s.Version == VersionLatest {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
 		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
 			return err
@@ -175,7 +179,7 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 // FindReleaseAsset - find the asset that matches the current OS and Arch, if multiple matches are found it
 // will attempt to find the best match based on the suffix for the appropriate OS. If no match is found an error
 // is returned.
-func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) {
+func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) { //nolint:gocyclo
 	// 1. Setup Assets
 	// 2. Determine Asset Type (checksum, archive, other, unknown)
 	// 3. Score Assets
@@ -195,7 +199,9 @@ func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) {
 	var best *GitHubAsset
 	for _, a := range s.Assets {
 		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil || a.GetScore() > best.GetScore() && (a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
+		if best == nil ||
+			a.GetScore() > best.GetScore() &&
+				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
 			best = a
 		}
 	}
@@ -240,13 +246,13 @@ func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) {
 		for k, v := range fileScored {
 			vv := v[0]
 
-			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key {
+			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
 				s.Checksum = a
 			}
-			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key {
+			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
 				s.Signature = a
 			}
-			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key {
+			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
 				s.Key = a
 			}
 		}

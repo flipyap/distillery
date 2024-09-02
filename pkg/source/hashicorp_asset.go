@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/clients/hashicorp"
 	"io"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/hashicorp"
 	"github.com/ekristen/distillery/pkg/common"
 )
 
@@ -54,7 +54,7 @@ func (a *HashicorpAsset) Download(ctx context.Context) error {
 
 	logrus.Infof("downloading asset: %s", a.Build.URL)
 
-	req, err := http.NewRequest("GET", a.Build.URL, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", a.Build.URL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -96,10 +96,10 @@ func (a *HashicorpAsset) Download(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Tracef("hash: %s", fmt.Sprintf("%x", hasher.Sum(nil)))
+	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
 
 	_ = os.WriteFile(assetFileHash, []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
-	a.Hash = fmt.Sprintf("%s", hasher.Sum(nil))
+	a.Hash = string(hasher.Sum(nil))
 
 	logrus.Tracef("Downloaded asset to: %s", tmpFile.Name())
 

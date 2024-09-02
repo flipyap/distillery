@@ -5,6 +5,7 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/apex/log"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -15,7 +16,7 @@ func Flags() []cli.Flag {
 			Name:     "log-level",
 			Usage:    "Log Level",
 			Aliases:  []string{"l"},
-			EnvVars:  []string{"LOGLEVEL"},
+			EnvVars:  []string{"LOG_LEVEL"},
 			Value:    "info",
 			Category: "Logging Options",
 		},
@@ -57,14 +58,19 @@ func Before(c *cli.Context) error {
 	switch c.String("log-level") {
 	case "trace":
 		logrus.SetLevel(logrus.TraceLevel)
+		log.SetLevel(log.DebugLevel)
 	case "debug":
 		logrus.SetLevel(logrus.DebugLevel)
+		log.SetLevel(log.DebugLevel)
 	case "info":
 		logrus.SetLevel(logrus.InfoLevel)
+		log.SetLevel(log.InfoLevel)
 	case "warn":
 		logrus.SetLevel(logrus.WarnLevel)
+		log.SetLevel(log.WarnLevel)
 	case "error":
 		logrus.SetLevel(logrus.ErrorLevel)
+		log.SetLevel(log.ErrorLevel)
 	}
 
 	return nil

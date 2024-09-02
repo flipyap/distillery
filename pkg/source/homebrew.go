@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/clients/homebrew"
 	"path/filepath"
 	"strings"
 
@@ -12,8 +11,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/homebrew"
 	"github.com/ekristen/distillery/pkg/osconfig"
 )
+
+const HomebrewSource = "homebrew"
 
 type Homebrew struct {
 	Source
@@ -27,10 +29,10 @@ type Homebrew struct {
 }
 
 func (s *Homebrew) GetSource() string {
-	return "homebrew"
+	return HomebrewSource
 }
 func (s *Homebrew) GetOwner() string {
-	return "homebrew"
+	return HomebrewSource
 }
 func (s *Homebrew) GetRepo() string {
 	return s.Formula
@@ -46,7 +48,7 @@ func (s *Homebrew) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
+func (s *Homebrew) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = homebrew.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -62,6 +64,7 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 		s.Version = formula.Versions.Stable
 	} else {
 		// match major/minor
+		logrus.Debug("selecting version")
 	}
 
 	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
@@ -72,6 +75,7 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 
 	s.Assets = make([]*HomebrewAsset, 0)
 	for osSlug, variant := range formula.Bottle.Stable.Files {
+		newVariant := variant
 		osSlug = strings.ReplaceAll(osSlug, "_", "-")
 		osSlug = strings.ReplaceAll(osSlug, "x86-64", "x86_64")
 
@@ -87,7 +91,7 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 
 		s.Assets = append(s.Assets, &HomebrewAsset{
 			Asset:       asset.New(name, "", s.GetOS(), s.GetArch(), s.Version),
-			FileVariant: &variant,
+			FileVariant: &newVariant,
 			Homebrew:    s,
 		})
 	}
@@ -105,7 +109,9 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 	var best *HomebrewAsset
 	for _, a := range s.Assets {
 		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil || a.GetScore() > best.GetScore() && (a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
+		if best == nil ||
+			a.GetScore() > best.GetScore() &&
+				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
 			best = a
 		}
 	}
@@ -122,7 +128,9 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
-	defer s.Cleanup()
+	defer func(s *Homebrew) {
+		_ = s.Cleanup()
+	}(s)
 
 	if err := s.Extract(); err != nil {
 		return err

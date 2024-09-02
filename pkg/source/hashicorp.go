@@ -3,7 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
-	hashicorp2 "github.com/ekristen/distillery/pkg/clients/hashicorp"
+
 	"path/filepath"
 
 	"github.com/apex/log"
@@ -13,13 +13,16 @@ import (
 	"github.com/gregjones/httpcache/diskcache"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/hashicorp"
 	"github.com/ekristen/distillery/pkg/osconfig"
 )
+
+const HashicorpSource = "hashicorp"
 
 type Hashicorp struct {
 	Source
 
-	client *hashicorp2.Client
+	client *hashicorp.Client
 
 	Owner   string
 	Repo    string
@@ -29,7 +32,7 @@ type Hashicorp struct {
 }
 
 func (s *Hashicorp) GetSource() string {
-	return "hashicorp"
+	return HashicorpSource
 }
 func (s *Hashicorp) GetOwner() string {
 	return s.Owner
@@ -48,12 +51,12 @@ func (s *Hashicorp) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
+func (s *Hashicorp) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
-	s.client = hashicorp2.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	s.client = hashicorp.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
-	var release *hashicorp2.Release
+	var release *hashicorp.Release
 
 	if s.Version == "latest" {
 		releases, err := s.client.ListReleases(s.Repo, nil)
@@ -107,7 +110,9 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	var best *HashicorpAsset
 	for _, a := range s.Assets {
 		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil || a.GetScore() > best.GetScore() && (a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
+		if best == nil ||
+			a.GetScore() > best.GetScore() &&
+				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
 			best = a
 		}
 	}
@@ -122,7 +127,9 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
-	defer s.Cleanup()
+	defer func(s *Hashicorp) {
+		_ = s.Cleanup()
+	}(s)
 
 	if err := s.Extract(); err != nil {
 		return err

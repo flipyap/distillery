@@ -47,12 +47,12 @@ func CompareHashWithChecksumFile(fileName, filePath, checksumFilePath string, ha
 		if len(parts) < 2 {
 			continue
 		}
-		hash := parts[0]
+		fileHash := parts[0]
 		filename := parts[1]
 		// Rust does *(binary) for the binary name
 		filename = strings.TrimPrefix(filename, "*")
 
-		if filename == fileName && hash == computedHash {
+		if filename == fileName && fileHash == computedHash {
 			return true, nil
 		}
 	}

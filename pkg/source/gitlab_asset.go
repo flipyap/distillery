@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/clients/gitlab"
-	"github.com/ekristen/distillery/pkg/common"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/gitlab"
+	"github.com/ekristen/distillery/pkg/common"
 )
 
 type GitLabAsset struct {
@@ -25,7 +27,7 @@ func (a *GitLabAsset) ID() string {
 	return fmt.Sprintf("%s-%s-%s", a.GitLab.GetOwner(), a.GitLab.GetRepo(), a.GitLab.Version)
 }
 
-func (a *GitLabAsset) Download(ctx context.Context) error {
+func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolintlint
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return err
@@ -38,7 +40,7 @@ func (a *GitLabAsset) Download(ctx context.Context) error {
 	a.DownloadPath = assetFile
 	a.Extension = filepath.Ext(a.DownloadPath)
 
-	assetFileHash := assetFile + ".sha256"
+	assetFileHash := fmt.Sprintf("%s.sha256", assetFile)
 	stats, err := os.Stat(assetFileHash)
 	if err != nil && !os.IsNotExist(err) {
 		return err
@@ -51,7 +53,7 @@ func (a *GitLabAsset) Download(ctx context.Context) error {
 
 	logrus.Infof("downloading asset: %s", a.Link.URL)
 
-	req, err := http.NewRequest("GET", a.Link.URL, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", a.Link.URL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -93,10 +95,10 @@ func (a *GitLabAsset) Download(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Tracef("hash: %s", fmt.Sprintf("%x", hasher.Sum(nil)))
+	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
 
 	_ = os.WriteFile(assetFileHash, []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
-	a.Hash = fmt.Sprintf("%s", hasher.Sum(nil))
+	a.Hash = string(hasher.Sum(nil))
 
 	logrus.Tracef("Downloaded asset to: %s", tmpFile.Name())
 

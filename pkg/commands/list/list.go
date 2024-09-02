@@ -2,11 +2,13 @@ package list
 
 import (
 	"fmt"
-	"github.com/ekristen/distillery/pkg/common"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/urfave/cli/v2"
+
+	"github.com/ekristen/distillery/pkg/common"
 )
 
 func Execute(c *cli.Context) error {

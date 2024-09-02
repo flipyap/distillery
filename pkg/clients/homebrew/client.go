@@ -1,6 +1,7 @@
 package homebrew
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,7 +30,7 @@ func (h *Client) GetFormula(formula string) (*Formula, error) {
 
 	logrus.Debugf("fetching formula: %s", url)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

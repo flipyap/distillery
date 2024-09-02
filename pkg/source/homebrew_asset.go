@@ -5,14 +5,16 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/clients/homebrew"
-	"github.com/ekristen/distillery/pkg/common"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/homebrew"
+	"github.com/ekristen/distillery/pkg/common"
 )
 
 type HomebrewAsset struct {
@@ -37,7 +39,7 @@ func (g *GHCRAuth) Bearer() string {
 func (a *HomebrewAsset) getAuthToken() (*GHCRAuth, error) {
 	// https://ghcr.io/token",service="ghcr.io",scope="repository:homebrew/core/ffmpeg:pull"
 
-	req, err := http.NewRequest("GET", "https://ghcr.io/token", nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", "https://ghcr.io/token", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +49,7 @@ func (a *HomebrewAsset) getAuthToken() (*GHCRAuth, error) {
 	q.Add("scope", fmt.Sprintf("repository:homebrew/core/%s:%s", a.Homebrew.GetRepo(), "pull"))
 	req.URL.RawQuery = q.Encode()
 
-	fmt.Println(req.URL.String())
+	logrus.Tracef("request: %s", req.URL.String())
 
 	var t *GHCRAuth
 
@@ -95,7 +97,7 @@ func (a *HomebrewAsset) Download(ctx context.Context) error {
 
 	// TODO: lookup manifest to determine how the file is stored ...
 
-	req, err := http.NewRequest("GET", a.FileVariant.URL, nil)
+	req, err := http.NewRequestWithContext(context.TODO(), "GET", a.FileVariant.URL, http.NoBody)
 	if err != nil {
 		return err
 	}
@@ -132,10 +134,10 @@ func (a *HomebrewAsset) Download(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Tracef("hash: %s", fmt.Sprintf("%x", hasher.Sum(nil)))
+	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
 
-	_ = os.WriteFile(assetFileHash, []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
-	a.Hash = fmt.Sprintf("%s", hasher.Sum(nil))
+	_ = os.WriteFile(assetFileHash, []byte(string(hasher.Sum(nil))), 0600)
+	a.Hash = string(hasher.Sum(nil))
 
 	logrus.Tracef("Downloaded asset to: %s", tmpFile.Name())
 

@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	gitlab2 "github.com/ekristen/distillery/pkg/clients/gitlab"
 	"path/filepath"
 
 	"github.com/gregjones/httpcache"
@@ -11,19 +10,20 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/gitlab"
 	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 type GitLab struct {
 	Source
 
-	client *gitlab2.Client
+	client *gitlab.Client
 
 	Owner   string
 	Repo    string
 	Version string
 
-	Release *gitlab2.Release
+	Release *gitlab.Release
 
 	Assets []*GitLabAsset
 }
@@ -48,16 +48,16 @@ func (s *GitLab) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *GitLab) Run(ctx context.Context, _, _ string) error {
+func (s *GitLab) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
-	s.client = gitlab2.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	token := s.Options.Settings["gitlab-token"].(string)
 	if token != "" {
 		s.client.SetToken(token)
 	}
 
-	if s.Version == "latest" {
+	if s.Version == VersionLatest {
 		release, err := s.client.GetLatestRelease(fmt.Sprintf("%s/%s", s.Owner, s.Repo))
 		if err != nil {
 			return err
@@ -101,7 +101,9 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 	var best *GitLabAsset
 	for _, a := range s.Assets {
 		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil || a.GetScore() > best.GetScore() && (a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
+		if best == nil ||
+			a.GetScore() > best.GetScore() &&
+				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
 			best = a
 		}
 	}
@@ -118,7 +120,9 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
-	defer s.Cleanup()
+	defer func(s *GitLab) {
+		_ = s.Cleanup()
+	}(s)
 
 	if err := s.Extract(); err != nil {
 		return err

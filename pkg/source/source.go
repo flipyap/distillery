@@ -6,16 +6,20 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/apex/log"
-	"github.com/ekristen/distillery/pkg/checksum"
 	"os"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/checksum"
 	"github.com/ekristen/distillery/pkg/cosign"
 	"github.com/ekristen/distillery/pkg/osconfig"
+)
+
+const (
+	VersionLatest = "latest"
 )
 
 type ISource interface {
@@ -91,16 +95,19 @@ func (s *Source) Download(ctx context.Context) error {
 }
 
 func (s *Source) Verify() error {
-	/*
-		if err := s.verifySignature(); err != nil {
-			return err
-		}
-	*/
+	if err := s.verifyChecksum(); err != nil {
+		return err
+	}
 
-	return s.verifyChecksum()
+	return s.verifySignature()
 }
 
 func (s *Source) verifySignature() error {
+	if true {
+		logrus.Debug("skipping signature verification")
+		return nil
+	}
+
 	logrus.Info("verifying signature")
 
 	cosignFileContent, err := os.ReadFile(s.Checksum.GetFilePath())
@@ -183,7 +190,7 @@ func (s *Source) Cleanup() error {
 func New(source string, opts *Options) (ISource, error) {
 	detectedOS := osconfig.New(opts.OS, opts.Arch)
 
-	version := "latest"
+	version := VersionLatest
 	versionParts := strings.Split(source, "@")
 	if len(versionParts) > 1 {
 		source = versionParts[0]
@@ -198,13 +205,13 @@ func New(source string, opts *Options) (ISource, error) {
 
 	if len(parts) == 2 {
 		// could be GitHub or Homebrew or Hashicorp
-		if parts[0] == "homebrew" {
+		if parts[0] == HomebrewSource {
 			return &Homebrew{
 				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Formula: parts[1],
 				Version: version,
 			}, nil
-		} else if parts[0] == "hashicorp" {
+		} else if parts[0] == HashicorpSource {
 			return &Hashicorp{
 				Source:  Source{Options: opts, OSConfig: detectedOS},
 				Owner:   parts[1],
@@ -221,7 +228,7 @@ func New(source string, opts *Options) (ISource, error) {
 		}, nil
 	} else if len(parts) >= 3 {
 		if strings.HasPrefix(parts[0], "github") {
-			if parts[1] == "hashicorp" {
+			if parts[1] == HashicorpSource {
 				return &Hashicorp{
 					Source:  Source{Options: opts, OSConfig: detectedOS},
 					Owner:   parts[1],
