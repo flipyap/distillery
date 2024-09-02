@@ -9,25 +9,31 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/dsnet/compress/bzip2"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulikunitz/xz"
 )
+
+func init() {
+	logrus.SetLevel(logrus.TraceLevel)
+}
 
 func TestAsset(t *testing.T) {
 	cases := []struct {
 		name        string
 		displayName string
 		expectType  Type
-		expectScore int
 	}{
-		{"test", "Test", Unknown, 0},
-		{"test.tar.gz", "Test", Archive, 0},
-		{"test.tar.gz.asc", "Test", Signature, 0},
-		{"dist.tar.gz.sig", "dist.tar.gz.sig", Signature, 0},
+		{"test", "Test", Unknown},
+		{"test.tar.gz", "Test", Archive},
+		{"test.tar.gz.asc", "Test", Signature},
+		{"dist.tar.gz.sig", "dist.tar.gz.sig", Signature},
 	}
 
 	for _, c := range cases {
@@ -42,80 +48,16 @@ func TestAsset(t *testing.T) {
 		if asset.Type != c.expectType {
 			t.Errorf("expected type to be %d, got %d", c.expectType, asset.Type)
 		}
-		if asset.score != c.expectScore {
-			t.Errorf("expected score to be %d, got %d", c.expectScore, asset.score)
-		}
 	}
 }
 
-func TestAssetScoring(t *testing.T) {
-	cases := []struct {
-		name        string
-		displayName string
-		scoringOpts *ScoreOptions
-		expectType  Type
-		expectScore int
-	}{
-		{
-			"test.tar.gz",
-			"Test",
-			&ScoreOptions{OS: []string{"linux"}, Arch: []string{"amd64"}, Extensions: []string{".tar.gz"}},
-			Archive,
-			15,
-		},
-		{
-			"test_amd64.tar.gz",
-			"Test",
-			&ScoreOptions{OS: []string{"linux"}, Arch: []string{"amd64"}, Extensions: []string{".tar.gz"}},
-			Archive,
-			20,
-		},
-		{
-			"test_linux_amd64.tar.gz",
-			"Test",
-			&ScoreOptions{OS: []string{"linux"}, Arch: []string{"amd64"}, Extensions: []string{"unknown", ".tar.gz"}},
-			Archive,
-			30,
-		},
-		{
-			"test_linux_x86_64.tar.gz",
-			"Test",
-			&ScoreOptions{
-				OS: []string{"Linux"}, Arch: []string{"amd64", "x86_64"}, Extensions: []string{"unknown", ".tar.gz"},
-			},
-			Archive,
-			30,
-		},
-	}
-
-	for _, c := range cases {
-		asset := New(c.name, c.displayName, "linux", "amd64", "1.0.0")
-		asset.Score(c.scoringOpts)
-
-		if asset.GetName() != c.name {
-			t.Errorf("expected name to be %s, got %s", c.name, asset.GetName())
-		}
-		if asset.GetDisplayName() != c.displayName {
-			t.Errorf("expected display name to be %s, got %s", c.displayName, asset.GetDisplayName())
-		}
-		if asset.Type != c.expectType {
-			t.Errorf("expected type to be %d, got %d", c.expectType, asset.Type)
-		}
-		if asset.score != c.expectScore {
-			t.Errorf("expected score to be %d, got %d", c.expectScore, asset.score)
-		}
-	}
-}
-
-func TestDefaultAsset(t *testing.T) {
+func TestAssetDefaults(t *testing.T) {
 	asset := New("dist-linux-amd64.tar.gz", "dist-linux-amd64.tar.gz", "linux", "amd64", "1.0.0")
-	asset.Score(&ScoreOptions{OS: []string{"linux"}, Arch: []string{"amd64"}, Extensions: []string{".tar.gz"}})
 	err := asset.Download(context.TODO())
 	assert.Error(t, err)
 
 	assert.Equal(t, Archive, asset.GetType())
 	assert.Equal(t, "not-implemented", asset.ID())
-	assert.Equal(t, 30, asset.GetScore())
 	assert.Equal(t, "dist-linux-amd64.tar.gz", asset.GetDisplayName())
 	assert.Equal(t, "dist-linux-amd64.tar.gz", asset.GetName())
 	assert.Equal(t, "", asset.GetFilePath())
@@ -201,48 +143,126 @@ func TestAssetTypes(t *testing.T) {
 	}
 }
 
+type internalFile struct {
+	name    string
+	mode    int64
+	content []byte
+}
+
 func TestAssetExtract(t *testing.T) {
 	cases := []struct {
-		name         string
-		fileType     Type
-		internalFile string
-		downloadFile string
+		name          string
+		fileType      Type
+		downloadFile  string
+		expectedFiles []string
+		expectError   bool
 	}{
 		{
-			name:         "dist-linux-amd64.tar.gz",
-			fileType:     Archive,
-			internalFile: "test-file",
-			downloadFile: createTarGz(t, "test-file", "This is a test file content"),
+			name:     "dist-linux-amd64.tar.gz",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "test-file",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"test-file",
+			},
 		},
 		{
 			name:         "dist-linux-amd64.zip",
 			fileType:     Archive,
-			internalFile: "test-file",
-			downloadFile: createZip(t, "test-file", "This is a test file content"),
+			downloadFile: createZip(t, "test-file", []byte{0x7F, 0x45, 0x4C, 0x46}),
+			expectedFiles: []string{
+				"test-file",
+				"docs/readme.md",
+			},
 		},
 		{
-			name:         "dist-linux-amd64.tar.bz2",
-			fileType:     Archive,
-			internalFile: "test-file",
-			downloadFile: createTarBz2(t, "test-file", "This is a test file content"),
+			name:     "dist-linux-amd64.tar.bz2",
+			fileType: Archive,
+			downloadFile: createTarBz2(t, []internalFile{
+				{
+					name:    "test-file",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"test-file",
+			},
 		},
 		{
-			name:         "dist-linux-amd64.tar.xz",
-			fileType:     Archive,
-			internalFile: "test-file",
-			downloadFile: createTarXz(t, "test-file", "This is a test file content"),
+			name:     "dist-linux-amd64.tar.xz",
+			fileType: Archive,
+			downloadFile: createTarXz(t, []internalFile{
+				{
+					name:    "test-file",
+					mode:    0644,
+					content: []byte("This is a test file content"),
+				},
+			}),
+			expectedFiles: []string{
+				"test-file",
+			},
 		},
 		{
 			name:         "dist-linux-amd64",
 			fileType:     Binary,
-			internalFile: "test-*",
-			downloadFile: createFile(t, "This is a test file content"),
+			downloadFile: createFile(t, []byte("This is a test file content")),
+			expectedFiles: []string{
+				"dist-linux-amd64",
+			},
 		},
 		{
 			name:         "windows-executable",
 			fileType:     Binary,
-			internalFile: "test-*",
-			downloadFile: createFile(t, "This is a test file content"),
+			downloadFile: createFile(t, []byte("This is a test file content")),
+			expectedFiles: []string{
+				"windows-executable",
+			},
+		},
+		{
+			name:     "dist-linux-multi-amd64.tar.gz",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "bin1",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+				{
+					name:    "bin2",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+				{
+					name:    "docs/readme.md",
+					mode:    0600,
+					content: []byte("this is a readme"),
+				},
+			}),
+			expectedFiles: []string{
+				"bin1",
+				"bin2",
+				"docs/readme.md",
+			},
+		},
+		{
+			name:         "empty.zip",
+			fileType:     Archive,
+			downloadFile: createEmptyZip(t),
+			expectError:  true,
+		},
+		{
+			name:         "empty.tar.gz",
+			fileType:     Archive,
+			downloadFile: createTarGz(t, []internalFile{}),
+			expectedFiles: []string{
+				"test-*.tar.gz",
+			},
 		},
 	}
 
@@ -260,21 +280,195 @@ func TestAssetExtract(t *testing.T) {
 			}(c.downloadFile)
 
 			err := asset.Extract()
-			assert.NoError(t, err)
-
-			// Verify the asset
-			if strings.HasSuffix(c.internalFile, "-*") {
-				assert.True(t, strings.HasPrefix(asset.Files[0].Name, "test-"))
+			if c.expectError {
+				assert.Error(t, err)
 			} else {
-				assert.Equal(t, c.internalFile, asset.Files[0].Name)
+				assert.NoError(t, err)
 			}
 
-			assert.Equal(t, 1, len(asset.Files))
+			assert.Len(t, asset.Files, len(c.expectedFiles))
+
+			for i, f := range asset.Files {
+				if slices.Contains(c.expectedFiles, f.Name) {
+					assert.Equal(t, c.expectedFiles[i], f.Name)
+				}
+			}
 		})
 	}
 }
 
-func createFile(t *testing.T, content string) string {
+func TestAssetInstall(t *testing.T) {
+	cases := []struct {
+		name          string
+		fileType      Type
+		downloadFile  string
+		expectedFiles []string
+		expectError   bool
+	}{
+		{
+			name:     "dist-linux-amd64.tar.gz",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "test-binary",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"test-binary",
+			},
+		},
+		{
+			name:         "dist-linux-amd64.zip",
+			fileType:     Archive,
+			downloadFile: createZip(t, "test-binary", []byte{0x7F, 0x45, 0x4C, 0x46}),
+			expectedFiles: []string{
+				"test-binary",
+			},
+		},
+		{
+			name:     "dist-linux-amd64.tar.bz2",
+			fileType: Archive,
+			downloadFile: createTarBz2(t, []internalFile{
+				{
+					name:    "test-binary",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"test-binary",
+			},
+		},
+		{
+			name:     "dist-linux-amd64.tar.xz",
+			fileType: Archive,
+			downloadFile: createTarXz(t, []internalFile{
+				{
+					name:    "test-binary",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"test-binary",
+			},
+		},
+		{
+			name:         "dist-darwin-amd64",
+			fileType:     Binary,
+			downloadFile: createFile(t, []byte{0xFE, 0xED, 0xFA, 0xCE}),
+			expectedFiles: []string{
+				"dist-darwin",
+			},
+		},
+		{
+			name:         "windows-executable",
+			fileType:     Binary,
+			downloadFile: createFile(t, []byte{0x4D, 0x5A}),
+			expectedFiles: []string{
+				"windows-executable",
+			},
+		},
+		{
+			name:     "dist-linux-multi-amd64.tar.gz",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "bin1",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+				{
+					name:    "bin2",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+				{
+					name:    "docs/readme.md",
+					mode:    0600,
+					content: []byte("this is a readme"),
+				},
+			}),
+			expectedFiles: []string{
+				"bin1",
+				"bin2",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			// Create a temporary directory for the binary installation
+			binDir, err := os.MkdirTemp("", "bin")
+			assert.NoError(t, err)
+			defer os.RemoveAll(binDir)
+
+			asset := New(c.name, c.name, "linux", "amd64", "1.0.0")
+			asset.DownloadPath = c.downloadFile
+
+			err = asset.Extract()
+			assert.NoError(t, err)
+
+			err = asset.Install("test-id", binDir)
+			assert.NoError(t, err)
+
+			for _, fileName := range c.expectedFiles {
+				destBinaryName := fmt.Sprintf("test-id-%s", filepath.Base(fileName))
+				destBinPath := filepath.Join(binDir, destBinaryName)
+
+				_, err = os.Stat(destBinPath)
+				assert.NoError(t, err)
+			}
+
+			fmt.Println(binDir)
+			_ = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+
+				if info.IsDir() {
+					return nil
+				}
+
+				fileInfo, err := os.Lstat(path)
+				if err != nil {
+					return err
+				}
+
+				if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
+					fmt.Println("symlink:", path)
+
+					return nil
+				}
+
+				fmt.Println("file:", path)
+
+				return nil
+			})
+		})
+	}
+}
+
+// -- helper functions below --
+
+func createEmptyZip(t *testing.T) string {
+	t.Helper()
+
+	// Create a temporary file
+	tmpFile, err := os.CreateTemp("", "test-empty-*.zip")
+	assert.NoError(t, err)
+	defer tmpFile.Close()
+
+	// Create a zip writer
+	zw := zip.NewWriter(tmpFile)
+	defer zw.Close()
+
+	return tmpFile.Name()
+}
+
+func createFile(t *testing.T, content []byte) string {
 	t.Helper()
 
 	// Create a temporary file
@@ -282,13 +476,57 @@ func createFile(t *testing.T, content string) string {
 	assert.NoError(t, err)
 	defer tmpFile.Close()
 
-	_, err = tmpFile.WriteString(content)
+	_, err = tmpFile.Write(content)
 	assert.NoError(t, err)
 
 	return tmpFile.Name()
 }
 
-func createTarGz(t *testing.T, fileName, content string) string {
+func createTar(t *testing.T, out io.Writer, files []internalFile) error {
+	t.Helper()
+
+	// Create a tar writer
+	tw := tar.NewWriter(out)
+	defer tw.Close()
+
+	for _, f := range files {
+		parts := strings.Split(f.name, "/")
+		if len(parts) > 1 {
+			for i := 0; i < len(parts)-1; i++ {
+				// Add a directory to the tar archive
+				dirHdr := &tar.Header{
+					Name: parts[0] + "/",
+					Mode: 0755,
+					Size: 0,
+				}
+				err := tw.WriteHeader(dirHdr)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// Add a file to the tar archive
+		hdr := &tar.Header{
+			Name: f.name,
+			Mode: f.mode,
+			Size: int64(len(f.content)),
+		}
+		err := tw.WriteHeader(hdr)
+		if err != nil {
+			return err
+		}
+
+		_, err = tw.Write(f.content)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createTarGz(t *testing.T, files []internalFile) string {
 	t.Helper()
 
 	// Create a temporary file
@@ -300,26 +538,13 @@ func createTarGz(t *testing.T, fileName, content string) string {
 	gw := gzip.NewWriter(tmpFile)
 	defer gw.Close()
 
-	// Create a tar writer
-	tw := tar.NewWriter(gw)
-	defer tw.Close()
-
-	// Add a file to the tar archive
-	hdr := &tar.Header{
-		Name: fileName,
-		Mode: 0600,
-		Size: int64(len(content)),
-	}
-	err = tw.WriteHeader(hdr)
-	assert.NoError(t, err)
-
-	_, err = tw.Write([]byte(content))
+	err = createTar(t, gw, files)
 	assert.NoError(t, err)
 
 	return tmpFile.Name()
 }
 
-func createTarBz2(t *testing.T, fileName, content string) string {
+func createTarBz2(t *testing.T, files []internalFile) string {
 	t.Helper()
 
 	// Create a temporary file
@@ -332,26 +557,13 @@ func createTarBz2(t *testing.T, fileName, content string) string {
 	assert.NoError(t, err)
 	defer bw.Close()
 
-	// Create a tar writer
-	tw := tar.NewWriter(bw)
-	defer tw.Close()
-
-	// Add a file to the tar archive
-	hdr := &tar.Header{
-		Name: fileName,
-		Mode: 0600,
-		Size: int64(len(content)),
-	}
-	err = tw.WriteHeader(hdr)
-	assert.NoError(t, err)
-
-	_, err = tw.Write([]byte(content))
+	err = createTar(t, bw, files)
 	assert.NoError(t, err)
 
 	return tmpFile.Name()
 }
 
-func createTarXz(t *testing.T, fileName, content string) string {
+func createTarXz(t *testing.T, files []internalFile) string {
 	t.Helper()
 
 	// Create a temporary file
@@ -364,26 +576,13 @@ func createTarXz(t *testing.T, fileName, content string) string {
 	assert.NoError(t, err)
 	defer xw.Close()
 
-	// Create a tar writer
-	tw := tar.NewWriter(xw)
-	defer tw.Close()
-
-	// Add a file to the tar archive
-	hdr := &tar.Header{
-		Name: fileName,
-		Mode: 0600,
-		Size: int64(len(content)),
-	}
-	err = tw.WriteHeader(hdr)
-	assert.NoError(t, err)
-
-	_, err = tw.Write([]byte(content))
+	err = createTar(t, xw, files)
 	assert.NoError(t, err)
 
 	return tmpFile.Name()
 }
 
-func createZip(t *testing.T, fileName, content string) string {
+func createZip(t *testing.T, fileName string, content []byte) string {
 	t.Helper()
 
 	// Create a temporary file
@@ -399,7 +598,19 @@ func createZip(t *testing.T, fileName, content string) string {
 	w, err := zw.Create(fileName)
 	assert.NoError(t, err)
 
-	_, err = io.Copy(w, bytes.NewReader([]byte(content)))
+	_, err = io.Copy(w, bytes.NewReader(content))
+	assert.NoError(t, err)
+
+	// Add docs/ directory to the zip archive
+	_, err = zw.Create("docs/")
+	assert.NoError(t, err)
+
+	// Add README.md file to the docs/ directory
+	readmeContent := "This is a README file."
+	w, err = zw.Create("docs/README.md")
+	assert.NoError(t, err)
+
+	_, err = io.Copy(w, bytes.NewReader([]byte(readmeContent)))
 	assert.NoError(t, err)
 
 	return tmpFile.Name()
