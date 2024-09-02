@@ -14,6 +14,15 @@ The goal of this project is to leverage the collective power of all the develope
 [goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist) and many others to 
 pre-compile their software and put their binaries up on GitHub or GitLab and install the binaries.
 
+## Needed Before 1.0
+
+- [ ] make defaults configurable (bin directory for example)
+- [ ] finish bin re-org under `opt/`
+- [ ] detect already installed versions
+- [ ] implement signature verification
+- [ ] implement uninstall
+- [ ] implement cleanup
+
 ## Install
 
 1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
@@ -72,13 +81,6 @@ dist install homebrew/opentofu
 - GitLab
 - Homebrew (binaries only, if anything has a dependency, it will not work at this time)
 - Hashicorp
-
-## Needed Before 1.0
-
-- [ ] make defaults configurable (bin directory for example)
-- [ ] implement signature verification
-- [ ] implement uninstall
-- [ ] implement cleanup
 
 ## Behaviors
 
