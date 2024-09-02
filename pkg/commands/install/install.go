@@ -70,7 +70,7 @@ func Execute(c *cli.Context) error {
 		log.Infof("including pre-releases")
 	}
 
-	if err := src.Run(c.Context, c.String("version"), c.String("github-token")); err != nil {
+	if err := src.Run(c.Context); err != nil {
 		return err
 	}
 

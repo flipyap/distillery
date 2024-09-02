@@ -45,14 +45,14 @@ func (s *Homebrew) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
+func (s *Homebrew) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = homebrew.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
 	logrus.Debug("fetching formula")
 
-	formula, err := s.client.GetFormula(s.Formula)
+	formula, err := s.client.GetFormula(ctx, s.Formula)
 	if err != nil {
 		return err
 	}
@@ -90,23 +90,19 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error {
 		})
 	}
 
+	return nil
+}
+
+func (s *Homebrew) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
 	if err := s.Discover(s.Assets, []string{s.Formula}); err != nil {
 		return err
 	}
 
-	if err := s.Download(ctx); err != nil {
-		return err
-	}
-
-	defer func(s *Homebrew) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Extract(); err != nil {
-		return err
-	}
-
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 

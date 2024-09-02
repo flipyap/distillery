@@ -46,7 +46,7 @@ func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
 }
 
-func (s *GitHub) Run(ctx context.Context, _, _ string) error {
+func (s *GitHub) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -64,27 +64,19 @@ func (s *GitHub) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *GitHub) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
 	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.Download(ctx); err != nil {
-		return err
-	}
-
-	defer func(s *GitHub) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Verify(); err != nil {
-		return err
-	}
-
-	if err := s.Extract(); err != nil {
-		return err
-	}
-
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 
@@ -131,7 +123,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		return fmt.Errorf("release not found")
 	}
 
-	log.Infof("installing version: %s", release.GetTagName())
+	log.Infof("installing version: %s", strings.TrimPrefix(release.GetTagName(), "v"))
 
 	s.Release = release
 

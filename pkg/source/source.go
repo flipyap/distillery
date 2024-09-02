@@ -32,7 +32,7 @@ type ISource interface {
 	GetApp() string
 	GetID() string
 	GetDownloadsDir() string
-	Run(context.Context, string, string) error
+	Run(context.Context) error
 }
 
 type Options struct {
@@ -64,6 +64,29 @@ func (s *Source) GetOS() string {
 
 func (s *Source) GetArch() string {
 	return s.Options.Arch
+}
+
+func (s *Source) commonRun(ctx context.Context) error {
+	if err := s.Download(ctx); err != nil {
+		return err
+	}
+
+	defer func(s *Source) {
+		err := s.Cleanup()
+		if err != nil {
+			log.WithError(err).Error("unable to cleanup")
+		}
+	}(s)
+
+	if err := s.Extract(); err != nil {
+		return err
+	}
+
+	if err := s.Install(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Discover will attempt to discover and categorize the assets provided

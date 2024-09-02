@@ -43,7 +43,7 @@ func (s *GitLab) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *GitLab) Run(ctx context.Context, _, _ string) error {
+func (s *GitLab) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -53,7 +53,7 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 	}
 
 	if s.Version == VersionLatest {
-		release, err := s.client.GetLatestRelease(fmt.Sprintf("%s/%s", s.Owner, s.Repo))
+		release, err := s.client.GetLatestRelease(ctx, fmt.Sprintf("%s/%s", s.Owner, s.Repo))
 		if err != nil {
 			return err
 		}
@@ -61,7 +61,7 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 		s.Version = release.TagName
 		s.Release = release
 	} else {
-		release, err := s.client.GetRelease(fmt.Sprintf("%s/%s", s.Owner, s.Repo), s.Version)
+		release, err := s.client.GetRelease(ctx, fmt.Sprintf("%s/%s", s.Owner, s.Repo), s.Version)
 		if err != nil {
 			return err
 		}
@@ -81,23 +81,19 @@ func (s *GitLab) Run(ctx context.Context, _, _ string) error {
 		})
 	}
 
+	return nil
+}
+
+func (s *GitLab) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
 	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.Download(ctx); err != nil {
-		return err
-	}
-
-	defer func(s *GitLab) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Extract(); err != nil {
-		return err
-	}
-
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 

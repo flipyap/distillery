@@ -46,7 +46,7 @@ func (s *Hashicorp) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
+func (s *Hashicorp) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = hashicorp.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -54,7 +54,7 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 	var release *hashicorp.Release
 
 	if s.Version == "latest" {
-		releases, err := s.client.ListReleases(s.Repo, nil)
+		releases, err := s.client.ListReleases(ctx, s.Repo, nil)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 		s.Version = releases[0].Version
 		release = releases[0]
 	} else {
-		version, err := s.client.GetVersion(s.Repo, s.Version)
+		version, err := s.client.GetVersion(ctx, s.Repo, s.Version)
 		if err != nil {
 			return err
 		}
@@ -89,23 +89,19 @@ func (s *Hashicorp) Run(ctx context.Context, _, _ string) error {
 		})
 	}
 
+	return nil
+}
+
+func (s *Hashicorp) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
 	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.Download(ctx); err != nil {
-		return err
-	}
-
-	defer func(s *Hashicorp) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Extract(); err != nil {
-		return err
-	}
-
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 
