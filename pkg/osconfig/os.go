@@ -39,7 +39,7 @@ func New(os, arch string) *OS {
 		newOS.Aliases = []string{"win"}
 		newOS.Extensions = []string{".exe"}
 	case Linux:
-		newOS.Aliases = []string{"linux"}
+		newOS.Aliases = []string{}
 		newOS.Extensions = []string{".AppImage"}
 	case Darwin:
 		newOS.Aliases = []string{"macos", "sonoma"}

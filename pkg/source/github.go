@@ -14,6 +14,8 @@ import (
 	"github.com/ekristen/distillery/pkg/asset"
 )
 
+const GitHubSource = "github"
+
 type GitHub struct {
 	Source
 
@@ -27,7 +29,7 @@ type GitHub struct {
 }
 
 func (s *GitHub) GetSource() string {
-	return "github"
+	return GitHubSource
 }
 func (s *GitHub) GetOwner() string {
 	return s.Owner
