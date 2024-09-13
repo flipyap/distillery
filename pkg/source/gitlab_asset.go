@@ -24,7 +24,7 @@ type GitLabAsset struct {
 }
 
 func (a *GitLabAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s", a.GitLab.GetOwner(), a.GitLab.GetRepo(), a.GitLab.Version)
+	return fmt.Sprintf("%s-%s-%s-%d", a.GitLab.GetOwner(), a.GitLab.GetRepo(), a.GitLab.Version, a.Link.ID)
 }
 
 func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolintlint
@@ -51,7 +51,7 @@ func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolint
 		return nil
 	}
 
-	logrus.Infof("downloading asset: %s", a.Link.URL)
+	logrus.Debugf("downloading asset: %s", a.Link.URL)
 
 	req, err := http.NewRequestWithContext(context.TODO(), "GET", a.Link.URL, http.NoBody)
 	if err != nil {

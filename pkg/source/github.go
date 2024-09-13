@@ -10,11 +10,11 @@ import (
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
-	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/score"
 )
+
+const GitHubSource = "github"
 
 type GitHub struct {
 	Source
@@ -26,12 +26,10 @@ type GitHub struct {
 	Repo    string // Repository name
 
 	Release *github.RepositoryRelease
-
-	Assets []*GitHubAsset
 }
 
 func (s *GitHub) GetSource() string {
-	return "github"
+	return GitHubSource
 }
 func (s *GitHub) GetOwner() string {
 	return s.Owner
@@ -51,7 +49,8 @@ func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
 }
 
-func (s *GitHub) Run(ctx context.Context, _, _ string) error {
+// sourceRun - run the source specific logic
+func (s *GitHub) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
@@ -69,29 +68,20 @@ func (s *GitHub) Run(ctx context.Context, _, _ string) error {
 		return err
 	}
 
-	ra, err := s.FindReleaseAsset()
-	if err != nil {
-		return err
-	}
-	_ = ra
+	return nil
+}
 
-	if err := s.Download(ctx); err != nil {
-		return err
-	}
-
-	defer func(s *GitHub) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Verify(); err != nil {
+// Run - run the source
+func (s *GitHub) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
 		return err
 	}
 
-	if err := s.Extract(); err != nil {
+	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 
@@ -138,7 +128,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		return fmt.Errorf("release not found")
 	}
 
-	log.Infof("installing version: %s", release.GetTagName())
+	log.Infof("installing version: %s", strings.TrimPrefix(release.GetTagName(), "v"))
 
 	s.Release = release
 
@@ -177,106 +167,4 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// FindReleaseAsset - find the asset that matches the current OS and Arch, if multiple matches are found it
-// will attempt to find the best match based on the suffix for the appropriate OS. If no match is found an error
-// is returned.
-func (s *GitHub) FindReleaseAsset() (*GitHubAsset, error) { //nolint:gocyclo
-	// 1. Setup Assets
-	// 2. Determine Asset Type (checksum, archive, other, unknown)
-	// 3. Score Assets
-	// 4. Select best Asset Type (archive/binary)
-	// 5. If Archive, we need to extract and determine which files we are keeping (binaries)
-	// 6. Extract files, and copy/symlink them into place
-	for _, a := range s.Assets {
-		a.Score(&asset.ScoreOptions{
-			OS:         s.OSConfig.GetOS(),
-			Arch:       s.OSConfig.GetArchitectures(),
-			Extensions: s.OSConfig.GetExtensions(),
-		})
-
-		logrus.Debugf("name: %s, score: %d", a.GetName(), a.GetScore())
-	}
-
-	var best *GitHubAsset
-	for _, a := range s.Assets {
-		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil ||
-			a.GetScore() > best.GetScore() &&
-				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
-			best = a
-		}
-	}
-
-	s.Binary = best
-
-	fileScoring := map[asset.Type][]string{}
-	fileScored := map[asset.Type][]score.Sorted{}
-	for _, a := range s.Assets {
-		if _, ok := fileScoring[a.GetType()]; !ok {
-			fileScoring[a.GetType()] = []string{}
-		}
-		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
-	}
-	for k, v := range fileScoring {
-		var ext []string
-		if k == asset.Key {
-			ext = []string{"key", "pub", "pem"}
-		} else if k == asset.Signature {
-			ext = []string{"sig", "asc"}
-		} else if k == asset.Checksum {
-			ext = []string{"sha256", "md5", "sha1", "txt"}
-		}
-
-		if _, ok := fileScored[k]; !ok {
-			fileScored[k] = []score.Sorted{}
-		}
-
-		fileScored[k] = score.Score(v, &score.Options{
-			OS:         s.OSConfig.GetOS(),
-			Arch:       s.OSConfig.GetArchitectures(),
-			Extensions: ext,
-			Names:      []string{strings.ReplaceAll(s.Binary.GetName(), filepath.Ext(s.Binary.GetName()), "")},
-		})
-
-		if len(fileScored[k]) > 0 {
-			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
-		}
-	}
-
-	for _, a := range s.Assets {
-		for k, v := range fileScored {
-			vv := v[0]
-
-			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				s.Checksum = a
-			}
-			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				s.Signature = a
-			}
-			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				s.Key = a
-			}
-		}
-	}
-
-	if s.Binary != nil {
-		logrus.Tracef("best binary: %s", s.Binary.GetName())
-	}
-	if s.Checksum != nil {
-		logrus.Tracef("best checksum: %s", s.Checksum.GetName())
-	}
-	if s.Signature != nil {
-		logrus.Tracef("best signature: %s", s.Signature.GetName())
-	}
-	if s.Key != nil {
-		logrus.Tracef("best key: %s", s.Key.GetName())
-	}
-
-	if best != nil {
-		return best, nil
-	}
-
-	return nil, fmt.Errorf("no matching asset found")
 }

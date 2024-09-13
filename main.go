@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/apex/log"
 	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -44,11 +45,11 @@ func main() {
 
 	app.Commands = common.GetCommands()
 	app.CommandNotFound = func(context *cli.Context, command string) {
-		logrus.Fatalf("command %s not found.", command)
+		log.Fatalf("command %s not found.", command)
 	}
 
 	ctx := signals.SetupSignalContext()
 	if err := app.RunContext(ctx, os.Args); err != nil {
-		logrus.Fatal(err)
+		log.Error(err.Error())
 	}
 }

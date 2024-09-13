@@ -12,7 +12,6 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/homebrew"
-	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 const HomebrewSource = "homebrew"
@@ -24,8 +23,6 @@ type Homebrew struct {
 
 	Formula string
 	Version string
-
-	Assets []*HomebrewAsset
 }
 
 func (s *Homebrew) GetSource() string {
@@ -48,14 +45,14 @@ func (s *Homebrew) GetDownloadsDir() string {
 	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
-func (s *Homebrew) Run(ctx context.Context, _, _ string) error { //nolint:gocyclo
+func (s *Homebrew) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = homebrew.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
 	logrus.Debug("fetching formula")
 
-	formula, err := s.client.GetFormula(s.Formula)
+	formula, err := s.client.GetFormula(ctx, s.Formula)
 	if err != nil {
 		return err
 	}
@@ -67,13 +64,10 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error { //nolint:gocycl
 		logrus.Debug("selecting version")
 	}
 
-	detectedOS := osconfig.New(s.GetOS(), s.GetArch())
-
 	if len(formula.Dependencies) > 0 {
 		return fmt.Errorf("formula with dependencies are not currently supported")
 	}
 
-	s.Assets = make([]*HomebrewAsset, 0)
 	for osSlug, variant := range formula.Bottle.Stable.Files {
 		newVariant := variant
 		osSlug = strings.ReplaceAll(osSlug, "_", "-")
@@ -96,47 +90,19 @@ func (s *Homebrew) Run(ctx context.Context, _, _ string) error { //nolint:gocycl
 		})
 	}
 
-	for _, a := range s.Assets {
-		a.Score(&asset.ScoreOptions{
-			OS:         detectedOS.GetOS(),
-			Arch:       detectedOS.GetArchitectures(),
-			Extensions: detectedOS.GetExtensions(),
-		})
+	return nil
+}
 
-		logrus.Debugf("name: %s, score: %d", a.GetName(), a.GetScore())
-	}
-
-	var best *HomebrewAsset
-	for _, a := range s.Assets {
-		logrus.Tracef("finding best: %s (%d)", a.GetName(), a.GetScore())
-		if best == nil ||
-			a.GetScore() > best.GetScore() &&
-				(a.GetType() == asset.Archive || a.GetType() == asset.Unknown || a.GetType() == asset.Binary) {
-			best = a
-		}
-	}
-
-	s.Binary = best
-
-	if best == nil {
-		return fmt.Errorf("unable to find best asset")
-	}
-
-	logrus.Tracef("best found: %s", best.GetName())
-
-	if err := best.Download(ctx); err != nil {
+func (s *Homebrew) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
 		return err
 	}
 
-	defer func(s *Homebrew) {
-		_ = s.Cleanup()
-	}(s)
-
-	if err := s.Extract(); err != nil {
+	if err := s.Discover(s.Assets, []string{s.Formula}); err != nil {
 		return err
 	}
 
-	if err := s.Install(); err != nil {
+	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 

@@ -26,9 +26,9 @@ func NewClient(client *http.Client) *Client {
 }
 
 // ListProducts returns a list of products available from the HashiCorp Releases API
-func (c *Client) ListProducts() (Products, error) {
+func (c *Client) ListProducts(ctx context.Context) (Products, error) {
 	req, err := http.NewRequestWithContext(
-		context.TODO(), http.MethodGet, "https://api.releases.hashicorp.com/v1/products", http.NoBody)
+		ctx, http.MethodGet, "https://api.releases.hashicorp.com/v1/products", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ type ListReleasesOptions struct {
 }
 
 // ListReleases returns a list of releases for a product from the HashiCorp Releases API
-func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Release, error) {
+func (c *Client) ListReleases(ctx context.Context, product string, opts *ListReleasesOptions) ([]*Release, error) {
 	if opts == nil {
 		opts = &ListReleasesOptions{
 			LicenseClass: "oss",
@@ -68,7 +68,7 @@ func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Rel
 		licenseClass = fmt.Sprintf("license_class=%s", opts.LicenseClass)
 	}
 
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet,
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s?%s", product, licenseClass), http.NoBody)
 	if err != nil {
 		return nil, err
@@ -103,10 +103,10 @@ func (c *Client) ListReleases(product string, opts *ListReleasesOptions) ([]*Rel
 }
 
 // GetVersion returns a specific release for a product from the HashiCorp Releases API
-func (c *Client) GetVersion(product, version string) (*Release, error) {
+func (c *Client) GetVersion(ctx context.Context, product, version string) (*Release, error) {
 	licenseClass := "license_class=oss"
 
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet,
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf("https://api.releases.hashicorp.com/v1/releases/%s/%s?%s",
 			product, version, licenseClass), http.NoBody)
 	if err != nil {

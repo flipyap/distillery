@@ -25,12 +25,12 @@ type Client struct {
 	client *http.Client
 }
 
-func (h *Client) GetFormula(formula string) (*Formula, error) {
+func (h *Client) GetFormula(ctx context.Context, formula string) (*Formula, error) {
 	url := fmt.Sprintf("https://formulae.brew.sh/api/formula/%s.json", formula)
 
 	logrus.Debugf("fetching formula: %s", url)
 
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", url, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

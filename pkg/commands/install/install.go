@@ -52,6 +52,7 @@ func Execute(c *cli.Context) error {
 			"gitlab-token":         c.String("gitlab-token"),
 			"no-checksum-verify":   c.Bool("no-checksum-verify"),
 			"include-pre-releases": c.Bool("include-pre-releases"),
+			"no-score-check":       c.Bool("no-score-check"),
 		},
 	})
 	if err != nil {
@@ -69,7 +70,7 @@ func Execute(c *cli.Context) error {
 		log.Infof("including pre-releases")
 	}
 
-	if err := src.Run(c.Context, c.String("version"), c.String("github-token")); err != nil {
+	if err := src.Run(c.Context); err != nil {
 		return err
 	}
 
@@ -162,6 +163,10 @@ func Flags() []cli.Flag {
 		&cli.BoolFlag{
 			Name:  "no-checksum-verify",
 			Usage: "Disable checksum verification",
+		},
+		&cli.BoolFlag{
+			Name:  "no-score-check",
+			Usage: "Disable scoring check",
 		},
 	}
 }

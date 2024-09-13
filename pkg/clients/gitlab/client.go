@@ -29,11 +29,11 @@ func (c *Client) SetToken(token string) {
 	c.token = token
 }
 
-func (c *Client) ListReleases(slug string) ([]*Release, error) {
+func (c *Client) ListReleases(ctx context.Context, slug string) ([]*Release, error) {
 	releaseURL := fmt.Sprintf("%s/projects/%s/releases", baseURL, url.QueryEscape(slug))
 	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +58,11 @@ func (c *Client) ListReleases(slug string) ([]*Release, error) {
 	return releases, nil
 }
 
-func (c *Client) GetLatestRelease(slug string) (*Release, error) {
+func (c *Client) GetLatestRelease(ctx context.Context, slug string) (*Release, error) {
 	releaseURL := fmt.Sprintf("%s/projects/%s/releases?per_page=1", baseURL, url.QueryEscape(slug))
 	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -87,11 +87,11 @@ func (c *Client) GetLatestRelease(slug string) (*Release, error) {
 	return releases[0], nil
 }
 
-func (c *Client) GetRelease(slug, version string) (*Release, error) {
+func (c *Client) GetRelease(ctx context.Context, slug, version string) (*Release, error) {
 	releaseURL := fmt.Sprintf("%s/projects/%s/releases/%s", baseURL, url.QueryEscape(slug), url.QueryEscape(version))
 	logrus.Tracef("GET %s", releaseURL)
 
-	req, err := http.NewRequestWithContext(context.TODO(), "GET", releaseURL, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

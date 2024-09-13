@@ -17,7 +17,6 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/matchers"
-	"github.com/h2non/filetype/types"
 	"github.com/krolaw/zipstream"
 	"github.com/sirupsen/logrus"
 	"github.com/xi2/xz"
@@ -38,11 +37,13 @@ var (
 	ignoreFileExtensions = []string{
 		".txt",
 		".sbom",
+		".json",
 	}
 
 	executableMimetypes = []string{
 		"application/x-mach-binary",
 		"application/x-executable",
+		"application/x-elf",
 		"application/vnd.microsoft.portable-executable",
 	}
 )
@@ -73,7 +74,6 @@ func New(name, displayName, osName, osArch, version string) *Asset {
 		Arch:        osArch,
 		Version:     version,
 		Files:       make([]*File, 0),
-		score:       0,
 	}
 
 	a.Classify()
@@ -101,8 +101,6 @@ type Asset struct {
 	Hash         string
 	TempDir      string
 	Files        []*File
-
-	score int
 }
 
 func (a *Asset) ID() string {
@@ -115,10 +113,6 @@ func (a *Asset) GetName() string {
 
 func (a *Asset) GetDisplayName() string {
 	return a.DisplayName
-}
-
-func (a *Asset) GetScore() int {
-	return a.score
 }
 
 func (a *Asset) GetType() Type {
@@ -142,12 +136,6 @@ func (a *Asset) Download(_ context.Context) error {
 
 func (a *Asset) GetFilePath() string {
 	return a.DownloadPath
-}
-
-type ScoreOptions struct {
-	OS         []string
-	Arch       []string
-	Extensions []string
 }
 
 // Classify determines the type of asset based on the file extension
@@ -194,55 +182,6 @@ func (a *Asset) Classify() { //nolint:gocyclo
 	logrus.Tracef("classified: %s (%d)", a.Name, a.Type)
 }
 
-// Score returns the score of the asset based on the options provided
-func (a *Asset) Score(opts *ScoreOptions) int {
-	var scoringValues = make(map[string]int)
-
-	// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
-	// a rust or go binary distribution
-	scoringValues["update"] = -20
-
-	for _, os1 := range opts.OS {
-		scoringValues[strings.ToLower(os1)] = 10
-	}
-	for _, arch := range opts.Arch {
-		scoringValues[strings.ToLower(arch)] = 5
-	}
-	for _, ext := range opts.Extensions {
-		scoringValues[strings.ToLower(ext)] = 15
-	}
-
-	if !a.IsSupportedExtension() {
-		a.score = -1
-		return a.score
-	}
-
-	for keyMatch, keyScore := range scoringValues {
-		if strings.Contains(strings.ToLower(a.Name), keyMatch) {
-			a.score += keyScore
-		}
-	}
-
-	return a.score
-}
-
-func (a *Asset) IsSupportedExtension() bool {
-	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
-		switch filetype.GetType(ext) {
-		case matchers.TypeGz, types.Unknown, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, matchers.TypeExe:
-			break
-		case msiType, matchers.TypeDeb, matchers.TypeRpm, ascType:
-			logrus.Debugf("filename %s doesn't have a supported extension", a.Name)
-			return false
-		default:
-			logrus.Debugf("filename %s doesn't have a supported extension", a.Name)
-			return false
-		}
-	}
-
-	return true
-}
-
 func (a *Asset) copyFile(srcFile, dstFile string) error {
 	// Open the source file for reading
 	src, err := os.Open(srcFile)
@@ -279,6 +218,8 @@ func (a *Asset) Install(id, binDir string) error {
 		if err != nil {
 			return err
 		}
+
+		logrus.Debug("found mimetype: ", m.String())
 
 		if slices.Contains(ignoreFileExtensions, m.Extension()) {
 			logrus.Tracef("ignoring file: %s", file.Name)
@@ -330,7 +271,9 @@ func (a *Asset) Install(id, binDir string) error {
 		// TODO: allow override
 		if runtime.GOOS == a.OS && runtime.GOARCH == a.Arch {
 			logrus.Debugf("creating symlink: %s to %s", defaultBinFilename, destBinFilename)
+			logrus.Debugf("creating symlink: %s to %s", versionedBinFilename, destBinFilename)
 			_ = os.Remove(defaultBinFilename)
+			_ = os.Remove(versionedBinFilename)
 			_ = os.Symlink(destBinFilename, defaultBinFilename)
 			_ = os.Symlink(destBinFilename, versionedBinFilename)
 		}
@@ -414,6 +357,7 @@ func (a *Asset) doExtract(in io.Reader) error {
 }
 
 func (a *Asset) processDirect(in io.Reader) (io.Reader, error) {
+	logrus.Tracef("processing direct file")
 	outFile, err := os.Create(filepath.Join(a.TempDir, filepath.Base(a.DownloadPath)))
 	if err != nil {
 		return nil, err
@@ -484,6 +428,7 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 }
 
 func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
+	logrus.Trace("processing tar file")
 	tr := tar.NewReader(in)
 	a.Files = make([]*File, 0)
 
