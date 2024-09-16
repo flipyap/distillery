@@ -84,7 +84,7 @@ func (a *GitHubAsset) Download(ctx context.Context) error {
 		return err
 	}
 
-	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
+	logrus.Tracef("hash: %x", hasher.Sum(nil))
 
 	_ = os.WriteFile(fmt.Sprintf("%s.sha256", assetFile), []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
 	a.Hash = string(hasher.Sum(nil))

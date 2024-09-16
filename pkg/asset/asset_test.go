@@ -130,7 +130,7 @@ func TestAssetTypes(t *testing.T) {
 		},
 		{
 			name:     "dist-linux-amd64.json",
-			fileType: Unknown,
+			fileType: Data,
 		},
 		{
 			name:     "dist-linux-amd64.sbom",
