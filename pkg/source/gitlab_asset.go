@@ -95,7 +95,7 @@ func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolint
 		return err
 	}
 
-	logrus.Tracef("hash: %s", string(hasher.Sum(nil)))
+	logrus.Tracef("hash: %x", hasher.Sum(nil))
 
 	_ = os.WriteFile(assetFileHash, []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0600)
 	a.Hash = string(hasher.Sum(nil))

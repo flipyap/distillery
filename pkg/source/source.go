@@ -126,6 +126,8 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 		}
 	}
 
+	// TODO: invert the fileScored and assets loop
+	// TODO: sort fileScored by score first
 	for _, a := range assets {
 		if a.GetType() != asset.Binary && a.GetType() != asset.Unknown && a.GetType() != asset.Archive {
 			continue
@@ -141,7 +143,7 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 				if vv.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
 					log.Error("no matching asset found, score too low")
 					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", a.GetName(), vv.Value)
-					return fmt.Errorf("no matching asset found, score too low")
+					continue
 				}
 
 				s.Binary = a

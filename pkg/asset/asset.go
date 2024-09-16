@@ -30,8 +30,10 @@ var (
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
 	sigType      = filetype.AddType("sig", "text/plain")
 	sbomJSONType = filetype.AddType("sbom.json", "application/json")
+	bomJSONType  = filetype.AddType("bom.json", "application/json")
 	jsonType     = filetype.AddType("json", "application/json")
 	sbomType     = filetype.AddType("sbom", "application/octet-stream")
+	bomType      = filetype.AddType("bom", "application/octet-stream")
 	pubType      = filetype.AddType("pub", "text/plain")
 
 	ignoreFileExtensions = []string{
@@ -60,6 +62,7 @@ const (
 	Signature
 	Key
 	SBOM
+	Data
 )
 
 // processorFunc is a function that processes a reader
@@ -152,13 +155,13 @@ func (a *Asset) Classify() { //nolint:gocyclo
 			a.Type = Signature
 		case pemType, pubType:
 			a.Type = Key
-		case sbomJSONType, sbomType:
+		case sbomJSONType, bomJSONType, sbomType, bomType:
 			a.Type = SBOM
 		case jsonType:
-			if strings.Contains(a.Name, "sbom") {
+			a.Type = Data
+
+			if strings.Contains(a.Name, ".sbom") || strings.Contains(a.Name, ".bom") {
 				a.Type = SBOM
-			} else {
-				a.Type = Unknown
 			}
 		default:
 			a.Type = Unknown

@@ -174,13 +174,13 @@ func Flags() []cli.Flag {
 func init() {
 	cmd := &cli.Command{
 		Name:        "install",
-		Usage:       "install",
+		Usage:       "install [provider/]owner/repo[@version]",
 		Description: fmt.Sprintf(`install a binary. default location is $HOME/.%s/bin`, common.NAME),
 		Before:      Before,
 		Flags:       append(Flags(), common.Flags()...),
 		Action:      Execute,
 		Args:        true,
-		ArgsUsage:   " binary[@version]",
+		ArgsUsage:   " [provider/]owner/repo[@version]",
 	}
 
 	common.RegisterCommand(cmd)
