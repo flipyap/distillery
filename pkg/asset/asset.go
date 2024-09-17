@@ -250,13 +250,21 @@ func (a *Asset) Install(id, binDir string) error {
 			dstFilename = file.Alias
 		}
 
+		logrus.Trace("pre-dstFilename: ", dstFilename)
+
 		// Strip the OS and Arch from the filename if it exists, this happens mostly when the binary is being
 		// uploaded directly instead of being encapsulated in a tarball or zip file
 		dstFilename = strings.ReplaceAll(dstFilename, a.OS, "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Arch, "")
+
+		dstFilename = strings.ReplaceAll(dstFilename, fmt.Sprintf("v%s", a.Version), "")
+		dstFilename = strings.ReplaceAll(dstFilename, a.Version, "")
+
 		dstFilename = strings.TrimSpace(dstFilename)
 		dstFilename = strings.TrimRight(dstFilename, "-")
 		dstFilename = strings.TrimRight(dstFilename, "_")
+
+		logrus.Tracef("post-dstFilename: %s", dstFilename)
 
 		destBinaryName := fmt.Sprintf("%s-%s", id, dstFilename)
 		destBinFilename := filepath.Join(binDir, destBinaryName)

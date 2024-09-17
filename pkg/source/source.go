@@ -133,6 +133,8 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 			continue
 		}
 
+		var foundTooLow []score.Sorted
+
 		for k, v := range fileScored {
 			if a.GetType() != k {
 				continue
@@ -141,12 +143,20 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 			vv := v[0]
 			if a.GetName() == vv.Key {
 				if vv.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
-					log.Error("no matching asset found, score too low")
-					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", a.GetName(), vv.Value)
-					continue
+					foundTooLow = append(foundTooLow, vv)
 				}
 
 				s.Binary = a
+			}
+		}
+
+		if s.Binary == nil {
+			for _, v := range foundTooLow {
+				if v.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
+					log.Error("no matching asset found, score too low")
+					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", a.GetName(), v.Value)
+					continue
+				}
 			}
 		}
 	}

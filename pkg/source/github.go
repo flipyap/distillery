@@ -107,6 +107,13 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	if release == nil {
 		releases, _, err := s.client.Repositories.ListReleases(ctx, s.GetOwner(), s.GetRepo(), nil)
 		if err != nil {
+			if strings.Contains(err.Error(), "404 Not Found") {
+				githubToken := s.Options.Settings["github-token"].(string)
+				if githubToken == "" {
+					log.Warn("no authentication token provided, a 404 error may be due to permissions")
+				}
+			}
+
 			return err
 		}
 		for _, r := range releases {
