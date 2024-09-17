@@ -303,6 +303,7 @@ func TestAssetInstall(t *testing.T) {
 		name          string
 		os            string
 		arch          string
+		version       string
 		fileType      Type
 		downloadFile  string
 		expectedFiles []string
@@ -428,6 +429,40 @@ func TestAssetInstall(t *testing.T) {
 				"bin2",
 			},
 		},
+		{
+			name:     "dist-v2.25.0-linux-amd64.tar.gz",
+			os:       "linux",
+			arch:     "amd64",
+			version:  "2.25.0",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "dist-v2.25.0-linux-amd64",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"dist",
+			},
+		},
+		{
+			name:     "dist-2.25.0-linux-amd64.tar.gz",
+			os:       "linux",
+			arch:     "amd64",
+			version:  "2.25.0",
+			fileType: Archive,
+			downloadFile: createTarGz(t, []internalFile{
+				{
+					name:    "dist-2.25.0-linux-amd64",
+					mode:    0755,
+					content: []byte{0x7F, 0x45, 0x4C, 0x46},
+				},
+			}),
+			expectedFiles: []string{
+				"dist",
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -437,7 +472,12 @@ func TestAssetInstall(t *testing.T) {
 			assert.NoError(t, err)
 			defer os.RemoveAll(binDir)
 
-			asset := New(c.name, c.name, c.os, c.arch, "1.0.0")
+			version := c.version
+			if version == "" {
+				version = "1.0.0"
+			}
+
+			asset := New(c.name, c.name, c.os, c.arch, version)
 			asset.DownloadPath = c.downloadFile
 
 			err = asset.Extract()
