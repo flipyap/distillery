@@ -656,7 +656,7 @@ func createTarXz(t *testing.T, files []internalFile) string {
 	assert.NoError(t, err)
 	defer tmpFile.Close()
 
-	// Create an xz writer
+	// Create a xz writer
 	xw, err := xz.NewWriter(tmpFile)
 	assert.NoError(t, err)
 	defer xw.Close()
