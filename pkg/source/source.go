@@ -90,17 +90,27 @@ func (s *Source) commonRun(ctx context.Context) error {
 }
 
 // Discover will attempt to discover and categorize the assets provided
-// TODO(ek): split up and refactor this function
+// TODO(ek): split up and refactor this function as it's way too complex
 func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolint:funlen,gocyclo
 	fileScoring := map[asset.Type][]string{}
 	fileScored := map[asset.Type][]score.Sorted{}
+
+	logrus.Tracef("discover: starting - %d", len(assets))
+
 	for _, a := range assets {
 		if _, ok := fileScoring[a.GetType()]; !ok {
 			fileScoring[a.GetType()] = []string{}
 		}
 		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
 	}
-	// Note: first pass we want to look for just binaries and score them
+
+	for k, v := range fileScoring {
+		logrus.Tracef("discover: type: %d, files: %d", k, len(v))
+	}
+
+	highEnoughScore := false
+
+	// Note: first pass we want to look for just binaries, archives and unknowns and score and sort them
 	for k, v := range fileScoring {
 		if k != asset.Binary && k != asset.Unknown && k != asset.Archive {
 			continue
@@ -115,53 +125,67 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 		}
 
 		fileScored[k] = score.Score(v, &score.Options{
-			OS:         detectedOS,
-			Arch:       arch,
-			Extensions: ext,
-			Names:      names,
+			OS:          detectedOS,
+			Arch:        arch,
+			Extensions:  ext,
+			Names:       names,
+			InvalidOS:   s.OSConfig.InvalidOS(),
+			InvalidArch: s.OSConfig.InvalidArchitectures(),
 		})
 
 		if len(fileScored[k]) > 0 {
-			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
+			for _, vv := range fileScored[k] {
+				if vv.Value >= 40 {
+					highEnoughScore = true
+				}
+				logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
+			}
 		}
 	}
 
-	// TODO: invert the fileScored and assets loop
-	// TODO: sort fileScored by score first
-	for _, a := range assets {
-		if a.GetType() != asset.Binary && a.GetType() != asset.Unknown && a.GetType() != asset.Archive {
-			continue
+	if !highEnoughScore && !s.Options.Settings["no-score-check"].(bool) {
+		log.Error("no matching asset found, score too low")
+		for _, t := range []asset.Type{asset.Binary, asset.Unknown, asset.Archive} {
+			for _, v := range fileScored[t] {
+				if v.Value < 40 {
+					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", v.Key, v.Value)
+					return errors.New("no matching asset found, score too low")
+				}
+			}
 		}
 
-		var foundTooLow []score.Sorted
+		return errors.New("no matching asset found, score too low")
+	}
 
-		for k, v := range fileScored {
-			if a.GetType() != k {
+	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
+	for _, t := range []asset.Type{asset.Binary, asset.Archive, asset.Unknown} {
+		if len(fileScored[t]) > 0 {
+			logrus.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
+
+			topScored := fileScored[t][0]
+			if topScored.Value < 40 {
+				logrus.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
 				continue
 			}
-
-			vv := v[0]
-			if a.GetName() == vv.Key {
-				if vv.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
-					foundTooLow = append(foundTooLow, vv)
+			for _, a := range assets {
+				if topScored.Key == a.GetName() {
+					s.Binary = a
+					break
 				}
-
-				s.Binary = a
 			}
 		}
 
-		if s.Binary == nil {
-			for _, v := range foundTooLow {
-				if v.Value < 40 && !s.Options.Settings["no-score-check"].(bool) {
-					log.Error("no matching asset found, score too low")
-					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", a.GetName(), v.Value)
-					continue
-				}
-			}
+		if s.Binary != nil {
+			break
 		}
 	}
 
-	// Note: second pass we want to look for everything else, using binary results to help score
+	if s.Binary == nil {
+		return errors.New("no binary found")
+	}
+
+	// Note: second pass we want to look for everything else, using binary results to help score the remaining assets
+	// THis is for the checksum, signature and key files
 	for k, v := range fileScoring {
 		if k == asset.Binary || k == asset.Unknown || k == asset.Archive {
 			continue
@@ -190,10 +214,12 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 		}
 
 		fileScored[k] = score.Score(v, &score.Options{
-			OS:         detectedOS,
-			Arch:       arch,
-			Extensions: ext,
-			Names:      []string{strings.ReplaceAll(s.Binary.GetName(), filepath.Ext(s.Binary.GetName()), "")},
+			OS:          detectedOS,
+			Arch:        arch,
+			Extensions:  ext,
+			Names:       []string{strings.ReplaceAll(s.Binary.GetName(), filepath.Ext(s.Binary.GetName()), "")},
+			InvalidOS:   s.OSConfig.InvalidOS(),
+			InvalidArch: s.OSConfig.InvalidArchitectures(),
 		})
 
 		if len(fileScored[k]) > 0 {
