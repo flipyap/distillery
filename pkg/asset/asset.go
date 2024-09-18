@@ -26,6 +26,7 @@ import (
 
 var (
 	msiType      = filetype.AddType("msi", "application/octet-stream")
+	apkType      = filetype.AddType("apk", "application/vnd.android.package-archive")
 	ascType      = filetype.AddType("asc", "text/plain")
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
 	sigType      = filetype.AddType("sig", "text/plain")
@@ -35,6 +36,7 @@ var (
 	sbomType     = filetype.AddType("sbom", "application/octet-stream")
 	bomType      = filetype.AddType("bom", "application/octet-stream")
 	pubType      = filetype.AddType("pub", "text/plain")
+	tarGzType    = filetype.AddType("tgz", "application/tar+gzip")
 
 	ignoreFileExtensions = []string{
 		".txt",
@@ -145,9 +147,9 @@ func (a *Asset) GetFilePath() string {
 func (a *Asset) Classify() { //nolint:gocyclo
 	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
 		switch filetype.GetType(ext) {
-		case matchers.TypeDeb, matchers.TypeRpm, msiType:
+		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType:
 			a.Type = Installer
-		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2:
+		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType:
 			a.Type = Archive
 		case matchers.TypeExe:
 			a.Type = Binary
@@ -179,6 +181,14 @@ func (a *Asset) Classify() { //nolint:gocyclo
 		}
 		if strings.Contains(a.Name, "SHA") && strings.Contains(a.Name, "SUMS") {
 			a.Type = Checksum
+		} else if strings.Contains(a.Name, "SUMS") {
+			a.Type = Checksum
+		}
+
+		if strings.Contains(a.Name, "-pivkey-") {
+			a.Type = Key
+		} else if strings.Contains(a.Name, "pkcs") && strings.Contains(a.Name, "key") {
+			a.Type = Key
 		}
 	}
 

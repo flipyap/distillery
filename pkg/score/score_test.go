@@ -147,6 +147,65 @@ func TestScore(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "invalid-os-and-arch",
+			names: []string{
+				"dist-linux-amd64",
+				"dist-windows-arm64.exe",
+				"dist-darwin-amd64",
+			},
+			opts: &Options{
+				OS:         []string{"windows"},
+				Arch:       []string{"arm64"},
+				Extensions: []string{"exe"},
+				Names: []string{
+					"dist",
+				},
+				InvalidOS:   []string{"linux", "darwin"},
+				InvalidArch: []string{"amd64"},
+			},
+			expected: []Sorted{
+				{
+					Key:   "dist-windows-arm64.exe",
+					Value: 100, // os, arch, ext, name match
+				},
+				{
+					Key:   "dist-linux-amd64",
+					Value: -60, // invalid os and arch
+				},
+				{
+					Key:   "dist-darwin-amd64",
+					Value: -60, // invalid os and arch
+				},
+			},
+		},
+		{
+			name: "invalid-extensions",
+			names: []string{
+				"dist-linux-amd64",
+				"dist-windows-amd64.exe",
+			},
+			opts: &Options{
+				OS:         []string{"linux"},
+				Arch:       []string{"amd64"},
+				Extensions: []string{""},
+				Names: []string{
+					"dist",
+				},
+				InvalidOS:         []string{"windows"},
+				InvalidExtensions: []string{"exe"},
+			},
+			expected: []Sorted{
+				{
+					Key:   "dist-linux-amd64",
+					Value: 80, // os, arch, name match
+				},
+				{
+					Key:   "dist-windows-amd64.exe",
+					Value: -20, // invalid extension and os
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

@@ -9,10 +9,13 @@ import (
 )
 
 type Options struct {
-	OS         []string
-	Arch       []string
-	Extensions []string
-	Names      []string
+	OS                []string
+	Arch              []string
+	Extensions        []string
+	Names             []string
+	InvalidOS         []string
+	InvalidArch       []string
+	InvalidExtensions []string
 }
 
 func Score(names []string, opts *Options) []Sorted {
@@ -25,6 +28,7 @@ func Score(names []string, opts *Options) []Sorted {
 		// Note: if it has the word "update" in it, we want to deprioritize it as it's likely an update binary from
 		// a rust or go binary distribution
 		scoringValues["update"] = -100
+		scoringValues["-keyless.sig"] = -10
 
 		for _, os1 := range opts.OS {
 			scoringValues[strings.ToLower(os1)] = 40
@@ -37,6 +41,16 @@ func Score(names []string, opts *Options) []Sorted {
 		}
 		for _, name1 := range opts.Names {
 			scoringValues[strings.ToLower(name1)] = 10
+		}
+
+		for _, os1 := range opts.InvalidOS {
+			scoringValues[strings.ToLower(os1)] = -40
+		}
+		for _, arch := range opts.InvalidArch {
+			scoringValues[strings.ToLower(arch)] = -30
+		}
+		for _, ext := range opts.InvalidExtensions {
+			scoringValues[strings.ToLower(ext)] = -20
 		}
 
 		for keyMatch, keyScore := range scoringValues {

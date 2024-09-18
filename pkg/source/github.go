@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"strings"
 
@@ -168,6 +169,8 @@ func (s *GitHub) GetReleaseAssets(ctx context.Context) error {
 
 		params.Page = res.NextPage
 	}
+
+	logrus.Tracef("found %d assets", len(s.Assets))
 
 	if len(s.Assets) == 0 {
 		return fmt.Errorf("no assets found")
