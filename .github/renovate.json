@@ -7,6 +7,10 @@
     "automerge": true,
     "assignees": ["@ekristen"]
   },
+  "postUpdateOptions": [
+    "gomodUpdateImportPaths",
+    "gomodTidy"
+  ],
   "packageRules": [
     {
       "matchUpdateTypes": [
