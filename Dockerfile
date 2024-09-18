@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.8-labs
+# syntax=docker/dockerfile:1.10-labs
 FROM cgr.dev/chainguard/wolfi-base:latest as base
 ARG PROJECT_NAME=distillery
 RUN apk add --no-cache ca-certificates
