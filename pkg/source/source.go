@@ -66,6 +66,7 @@ func (s *Source) GetArch() string {
 	return s.Options.Arch
 }
 
+// commonRun - common run logic for all sources that includes download, extract, install and cleanup
 func (s *Source) commonRun(ctx context.Context) error {
 	if err := s.Download(ctx); err != nil {
 		return err
@@ -91,13 +92,13 @@ func (s *Source) commonRun(ctx context.Context) error {
 
 // Discover will attempt to discover and categorize the assets provided
 // TODO(ek): split up and refactor this function as it's way too complex
-func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolint:funlen,gocyclo
+func (s *Source) Discover(names []string) error { //nolint:funlen,gocyclo
 	fileScoring := map[asset.Type][]string{}
 	fileScored := map[asset.Type][]score.Sorted{}
 
-	logrus.Tracef("discover: starting - %d", len(assets))
+	logrus.Tracef("discover: starting - %d", len(s.Assets))
 
-	for _, a := range assets {
+	for _, a := range s.Assets {
 		if _, ok := fileScoring[a.GetType()]; !ok {
 			fileScoring[a.GetType()] = []string{}
 		}
@@ -167,7 +168,7 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 				logrus.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
 				continue
 			}
-			for _, a := range assets {
+			for _, a := range s.Assets {
 				if topScored.Key == a.GetName() {
 					s.Binary = a
 					break
@@ -227,7 +228,7 @@ func (s *Source) Discover(assets []asset.IAsset, names []string) error { //nolin
 		}
 	}
 
-	for _, a := range assets {
+	for _, a := range s.Assets {
 		for k, v := range fileScored {
 			vv := v[0]
 

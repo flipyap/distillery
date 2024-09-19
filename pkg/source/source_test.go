@@ -2,13 +2,13 @@ package source_test
 
 import (
 	"fmt"
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/osconfig"
-	"github.com/sirupsen/logrus"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/ekristen/distillery/pkg/source"
 )
 
@@ -135,7 +135,7 @@ func TestSourceDiscover(t *testing.T) {
 				"SHA512SUMS",
 				"SHA512SUMS.sig",
 			},
-			matrix: []testSourceDiscoverMatrix{
+			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
 				{
 					os:   "darwin",
 					arch: "amd64",
@@ -300,7 +300,7 @@ func TestSourceDiscover(t *testing.T) {
 				"cosign_checksums.txt-keyless.sig",
 				"release-cosign.pub",
 			},
-			matrix: []testSourceDiscoverMatrix{
+			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
 				{
 					os:   "darwin",
 					arch: "amd64",
@@ -362,18 +362,14 @@ func TestSourceDiscover(t *testing.T) {
 					os:   "darwin",
 					arch: "amd64",
 					expected: testSourceDiscoverExpected{
-						binary:    "acorn-v0.10.1-macOS-universal.tar.gz",
-						signature: "",
-						checksum:  "",
+						binary: "acorn-v0.10.1-macOS-universal.tar.gz",
 					},
 				},
 				{
 					os:   "darwin",
 					arch: "arm64",
 					expected: testSourceDiscoverExpected{
-						binary:    "acorn-v0.10.1-macOS-universal.tar.gz",
-						signature: "",
-						checksum:  "",
+						binary: "acorn-v0.10.1-macOS-universal.tar.gz",
 					},
 				},
 				{
@@ -435,7 +431,7 @@ func TestSourceDiscover(t *testing.T) {
 					Assets: assets,
 				}
 
-				err := testSource.Discover(assets, []string{tc.name})
+				err := testSource.Discover([]string{tc.name})
 				assert.NoError(t, err)
 
 				if m.expected.binary != "" {
