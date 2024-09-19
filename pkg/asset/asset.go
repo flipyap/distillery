@@ -218,7 +218,9 @@ func (a *Asset) copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-func (a *Asset) Install(id, binDir string) error {
+// Install installs the asset
+// TODO(ek): simplify this function
+func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 	found := false
 
 	logrus.Tracef("files to process: %d", len(a.Files))

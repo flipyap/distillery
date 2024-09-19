@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/google/go-github/v62/github"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
+	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
 )
@@ -50,6 +50,24 @@ func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
 }
 
+// Run - run the source
+func (s *GitHub) Run(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
+	// this is from the Source struct
+	if err := s.Discover([]string{s.Repo}); err != nil {
+		return err
+	}
+
+	if err := s.commonRun(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // sourceRun - run the source specific logic
 func (s *GitHub) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
@@ -66,23 +84,6 @@ func (s *GitHub) sourceRun(ctx context.Context) error {
 	}
 
 	if err := s.GetReleaseAssets(ctx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Run - run the source
-func (s *GitHub) Run(ctx context.Context) error {
-	if err := s.sourceRun(ctx); err != nil {
-		return err
-	}
-
-	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
-		return err
-	}
-
-	if err := s.commonRun(ctx); err != nil {
 		return err
 	}
 

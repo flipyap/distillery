@@ -98,7 +98,7 @@ func (s *Homebrew) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.Discover(s.Assets, []string{s.Formula}); err != nil {
+	if err := s.Discover([]string{s.Formula}); err != nil {
 		return err
 	}
 

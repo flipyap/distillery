@@ -97,7 +97,7 @@ func (s *Hashicorp) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.Discover(s.Assets, []string{s.Repo}); err != nil {
+	if err := s.Discover([]string{s.Repo}); err != nil {
 		return err
 	}
 
