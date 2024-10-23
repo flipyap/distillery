@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
-	"github.com/ekristen/distillery/pkg/source"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 func Execute(c *cli.Context) error {
@@ -37,7 +37,7 @@ func Execute(c *cli.Context) error {
 		_ = c.Set("include-pre-releases", "true")
 	}
 
-	src, err := source.New(c.Args().First(), &source.Options{
+	src, err := NewSource(c.Args().First(), &provider.Options{
 		OS:           c.String("os"),
 		Arch:         c.String("arch"),
 		HomeDir:      homeDir,

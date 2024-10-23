@@ -12,12 +12,13 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/hashicorp"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const HashicorpSource = "hashicorp"
 
 type Hashicorp struct {
-	Source
+	provider.Provider
 
 	client *hashicorp.Client
 
@@ -101,7 +102,7 @@ func (s *Hashicorp) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 

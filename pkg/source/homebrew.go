@@ -12,12 +12,13 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/homebrew"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const HomebrewSource = "homebrew"
 
 type Homebrew struct {
-	Source
+	provider.Provider
 
 	client *homebrew.Client
 
@@ -102,7 +103,7 @@ func (s *Homebrew) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 

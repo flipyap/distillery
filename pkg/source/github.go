@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+
 	"path/filepath"
 	"strings"
 
@@ -13,12 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const GitHubSource = "github"
 
 type GitHub struct {
-	Source
+	provider.Provider
 
 	client *github.Client
 
@@ -56,12 +58,12 @@ func (s *GitHub) Run(ctx context.Context) error {
 		return err
 	}
 
-	// this is from the Source struct
+	// this is from the Provider struct
 	if err := s.Discover([]string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 
@@ -95,7 +97,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	var err error
 	var release *github.RepositoryRelease
 
-	if s.Version == VersionLatest {
+	if s.Version == provider.VersionLatest {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
 		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
 			return err

@@ -26,13 +26,13 @@ func Execute(c *cli.Context) error {
 	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
 	optDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "opt")
 
-	log.Infof("distillery/%s", common.AppVersion.Summary)
+	log.Infof("version: distillery/%s", common.AppVersion.Summary)
 	log.Infof("     os: %s", runtime.GOOS)
 	log.Infof("   arch: %s", runtime.GOARCH)
 	log.Infof("   home: %s", homeDir)
 	log.Infof("    bin: %s", binDir)
 	log.Infof("    opt: %s", optDir)
-	log.Infof("  cache: %s", filepath.Join(cacheDir, common.NAME))
+	log.Infof("  cache: %s\n", filepath.Join(cacheDir, common.NAME))
 
 	log.Warnf("To cleanup all of distillery, remove the following directories:")
 	log.Warnf("  - %s", filepath.Join(cacheDir, common.NAME))

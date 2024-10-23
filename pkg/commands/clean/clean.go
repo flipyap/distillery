@@ -2,6 +2,7 @@ package clean
 
 import (
 	"fmt"
+	"github.com/apex/log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,10 @@ func Execute(c *cli.Context) error {
 	sims := make(map[string]map[string]string)
 	targets := make([]string, 0)
 	bins := make([]string, 0)
+
+	if !c.Bool("no-dry-run") {
+		log.Warn("dry-run enabled, no changes will be made, use --no-dry-run to perform actions")
+	}
 
 	_ = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -66,7 +71,7 @@ func Execute(c *cli.Context) error {
 		return nil
 	})
 
-	fmt.Println("orphaned binaries:")
+	log.Warn("orphaned binaries:")
 	for _, path := range bins {
 		found := false
 
@@ -81,7 +86,7 @@ func Execute(c *cli.Context) error {
 			continue
 		}
 
-		fmt.Println("  - ", path)
+		log.Warnf("  - %s", path)
 
 		if c.Bool("no-dry-run") {
 			if err := os.Remove(path); err != nil {

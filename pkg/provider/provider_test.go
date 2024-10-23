@@ -1,4 +1,4 @@
-package source_test
+package provider_test
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/osconfig"
+	"github.com/ekristen/distillery/pkg/provider"
 	"github.com/ekristen/distillery/pkg/source"
 )
 
@@ -21,7 +22,7 @@ func Test_New(t *testing.T) {
 
 	cases := []struct {
 		source string
-		want   source.ISource
+		want   provider.ISource
 	}{
 		{
 			source: "ekristen/aws-nuke",
@@ -82,7 +83,7 @@ func Test_New(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.source, func(t *testing.T) {
-			got, err := source.New(tt.source, &source.Options{})
+			got, err := source.New(tt.source, &provider.Options{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want.GetSource(), got.GetSource())
 		})
@@ -419,9 +420,9 @@ func TestSourceDiscover(t *testing.T) {
 					assets = append(assets, newA)
 				}
 
-				testSource := source.Source{
+				testSource := provider.Provider{
 					OSConfig: osconfig.New(m.os, m.arch),
-					Options: &source.Options{
+					Options: &provider.Options{
 						OS:   m.os,
 						Arch: m.arch,
 						Settings: map[string]interface{}{
