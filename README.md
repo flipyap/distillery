@@ -29,12 +29,12 @@ GitHub or GitLab and install the binaries.
 
 ## Needed Before 1.0
 
-- [ ] make defaults configurable (bin directory for example)
-- [ ] finish bin re-org under `opt/`
+- [x] make defaults configurable (bin directory for example)
+- [x] finish bin re-org under `opt/`
 - [ ] detect already installed versions
 - [ ] implement signature verification
 - [ ] implement uninstall
-- [ ] implement cleanup
+- [x] implement cleanup
 
 ## Install
 
