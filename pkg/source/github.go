@@ -45,7 +45,7 @@ func (s *GitHub) GetApp() string {
 }
 
 func (s *GitHub) GetDownloadsDir() string {
-	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
 func (s *GitHub) GetID() string {
@@ -72,7 +72,7 @@ func (s *GitHub) Run(ctx context.Context) error {
 
 // sourceRun - run the source specific logic
 func (s *GitHub) sourceRun(ctx context.Context) error {
-	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	githubToken := s.Options.Settings["github-token"].(string)

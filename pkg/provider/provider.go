@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/ekristen/distillery/pkg/config"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,15 +26,9 @@ const (
 )
 
 type Options struct {
-	OS           string
-	Arch         string
-	HomeDir      string
-	CacheDir     string
-	BinDir       string
-	OptDir       string
-	MetadataDir  string
-	DownloadsDir string
-
+	OS       string
+	Arch     string
+	Config   *config.Config
 	Settings map[string]interface{}
 }
 
@@ -374,7 +369,8 @@ func (p *Provider) Extract() error {
 }
 
 func (p *Provider) Install() error {
-	return p.Binary.Install(p.Binary.ID(), p.Options.BinDir)
+	return p.Binary.Install(
+		p.Binary.ID(), p.Options.Config.BinPath, filepath.Join(p.Options.Config.OptPath, p.Binary.Path()))
 }
 
 func (p *Provider) Cleanup() error {

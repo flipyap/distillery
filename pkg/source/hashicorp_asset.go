@@ -32,6 +32,10 @@ func (a *HashicorpAsset) ID() string {
 		a.Hashicorp.GetSource(), a.Hashicorp.GetRepo(), a.Hashicorp.Version, urlHashShort)
 }
 
+func (a *HashicorpAsset) Path() string {
+	return filepath.Join("hashicorp", a.Hashicorp.GetRepo(), a.Hashicorp.Version)
+}
+
 func (a *HashicorpAsset) Download(ctx context.Context) error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {

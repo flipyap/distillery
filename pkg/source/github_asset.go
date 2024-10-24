@@ -24,7 +24,11 @@ type GitHubAsset struct {
 }
 
 func (a *GitHubAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s-%d", a.GitHub.GetOwner(), a.GitHub.GetRepo(), a.GitHub.Version, a.ReleaseAsset.GetID())
+	return fmt.Sprintf("%s-%d", a.GetType(), a.ReleaseAsset.GetID())
+}
+
+func (a *GitHubAsset) Path() string {
+	return filepath.Join("github", a.GitHub.GetOwner(), a.GitHub.GetRepo(), a.GitHub.Version)
 }
 
 func (a *GitHubAsset) Download(ctx context.Context) error {

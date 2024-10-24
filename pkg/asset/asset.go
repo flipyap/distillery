@@ -22,6 +22,7 @@ import (
 	"github.com/xi2/xz"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 var (
@@ -54,6 +55,10 @@ var (
 
 // Type is the type of asset
 type Type int
+
+func (t Type) String() string {
+	return [...]string{"unknown", "archive", "binary", "installer", "checksum", "signature", "key", "sbom", "data"}[t]
+}
 
 const (
 	Unknown Type = iota
@@ -111,6 +116,7 @@ type Asset struct {
 func (a *Asset) ID() string {
 	return "not-implemented"
 }
+func (a *Asset) Path() string { return "not-implemented" }
 
 func (a *Asset) GetName() string {
 	return a.Name
@@ -121,6 +127,7 @@ func (a *Asset) GetDisplayName() string {
 }
 
 func (a *Asset) GetType() Type {
+
 	return a.Type
 }
 
@@ -218,11 +225,8 @@ func (a *Asset) copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-// Install installs the asset
-// TODO(ek): simplify this function
-func (a *Asset) Install(id, binDir string) error { //nolint:funlen
-	found := false
-
+// determineInstallable determines if the file is installable or not based on the mimetype
+func (a *Asset) determineInstallable() {
 	logrus.Tracef("files to process: %d", len(a.Files))
 	for _, file := range a.Files {
 		// Actual path to the downloaded/extracted file
@@ -231,7 +235,7 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 		logrus.Debug("checking file for installable: ", file.Name)
 		m, err := mimetype.DetectFile(fullPath)
 		if err != nil {
-			return err
+			logrus.WithError(err).Warn("unable to determine mimetype")
 		}
 
 		logrus.Debug("found mimetype: ", m.String())
@@ -246,6 +250,18 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 			file.Installable = true
 		}
 	}
+}
+
+// Install installs the asset
+// TODO(ek): simplify this function
+func (a *Asset) Install(id, binDir string, optDir string) error { //nolint:funlen
+	found := false
+
+	if err := os.MkdirAll(optDir, 0755); err != nil {
+		return err
+	}
+
+	a.determineInstallable()
 
 	for _, file := range a.Files {
 		if !file.Installable {
@@ -272,14 +288,23 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 		dstFilename = strings.ReplaceAll(dstFilename, fmt.Sprintf("v%s", a.Version), "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Version, "")
 
+		if a.OS == osconfig.Windows || strings.HasSuffix(dstFilename, ".exe") {
+			dstFilename = strings.TrimSuffix(dstFilename, ".exe")
+		}
+
 		dstFilename = strings.TrimSpace(dstFilename)
 		dstFilename = strings.TrimRight(dstFilename, "-")
 		dstFilename = strings.TrimRight(dstFilename, "_")
 
+		if a.OS == osconfig.Windows {
+			dstFilename = fmt.Sprintf("%s.exe", dstFilename)
+		}
+
 		logrus.Tracef("post-dstFilename: %s", dstFilename)
 
-		destBinaryName := fmt.Sprintf("%s-%s", id, dstFilename)
-		destBinFilename := filepath.Join(binDir, destBinaryName)
+		destBinaryName := fmt.Sprintf("%s-%s", dstFilename, id)
+		// Note: copy to the opt dir for organization
+		destBinFilename := filepath.Join(optDir, destBinaryName)
 		defaultBinFilename := filepath.Join(binDir, dstFilename)
 
 		versionedBinFilename := fmt.Sprintf("%s@%s", defaultBinFilename, strings.TrimLeft(a.Version, "v"))

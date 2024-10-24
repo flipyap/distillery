@@ -6,6 +6,7 @@ const (
 	Windows = "windows"
 	Linux   = "linux"
 	Darwin  = "darwin"
+	FreeBSD = "freebsd"
 
 	AMD64 = "amd64"
 	ARM64 = "arm64"
@@ -43,11 +44,11 @@ func (o *OS) GetExtensions() []string {
 func (o *OS) InvalidOS() []string {
 	switch o.Name {
 	case Windows:
-		return []string{Linux, Darwin}
+		return []string{Linux, Darwin, FreeBSD}
 	case Linux:
 		return []string{Windows, Darwin}
 	case Darwin:
-		return []string{Windows, Linux}
+		return []string{Windows, Linux, FreeBSD}
 	}
 
 	return []string{}

@@ -29,6 +29,10 @@ func (a *HomebrewAsset) ID() string {
 		a.Homebrew.GetOwner(), a.Homebrew.GetRepo(), a.Homebrew.Version, a.FileVariant.Sha256[:9])
 }
 
+func (a *HomebrewAsset) Path() string {
+	return filepath.Join("homebrew", a.Homebrew.GetRepo(), a.Homebrew.Version)
+}
+
 type GHCRAuth struct {
 	Token string `json:"token"`
 }

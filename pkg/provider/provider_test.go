@@ -2,6 +2,7 @@ package provider_test
 
 import (
 	"fmt"
+	"github.com/ekristen/distillery/pkg/commands/install"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -83,7 +84,7 @@ func Test_New(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.source, func(t *testing.T) {
-			got, err := source.New(tt.source, &provider.Options{})
+			got, err := install.NewSource(tt.source, &provider.Options{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want.GetSource(), got.GetSource())
 		})
@@ -103,6 +104,7 @@ type testSourceDiscoverMatrix struct {
 }
 
 type testSourceDiscoverExpected struct {
+	error     string
 	binary    string
 	signature string
 	checksum  string
@@ -402,6 +404,45 @@ func TestSourceDiscover(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "nerdctl",
+			filenames: []string{
+				"nerdctl-1.7.7-freebsd-amd64.tar.gz",
+				"nerdctl-1.7.7-go-mod-vendor.tar.gz",
+				"nerdctl-1.7.7-linux-amd64.tar.gz",
+				"nerdctl-1.7.7-linux-amd-v7.tar.gz",
+				"nerdctl-1.7.7-linux-arm64.tar.gz",
+				"nerdctl-1.7.7-linux-ppc64le.tar.gz",
+				"nerdctl-1.7.7-linux-riscv64.tar.gz",
+				"nerdctl-1.7.7-linux-s390x.tar.gz",
+				"nerdctl-1.7.7-windows-amd64.tar.gz",
+				"nerdctl-full-1.7.7-linux-amd64.tar.gz",
+				"nerdctl-full-1.7.7-linux-arm64.tar.gz",
+				"SHA256SUMS",
+				"SHA256SUMS.asc",
+			},
+			matrix: []testSourceDiscoverMatrix{
+				{
+					os:   "darwin",
+					arch: "amd64",
+					expected: testSourceDiscoverExpected{
+						error:     "no matching asset found, score too low",
+						binary:    "",
+						signature: "",
+						checksum:  "",
+					},
+				},
+				{
+					os:   "linux",
+					arch: "arm64",
+					expected: testSourceDiscoverExpected{
+						binary:    "nerdctl-1.7.7-linux-arm64.tar.gz",
+						signature: "SHA256SUMS.asc",
+						checksum:  "SHA256SUMS",
+					},
+				},
+			},
+		},
 	}
 
 	t.Parallel()
@@ -433,6 +474,11 @@ func TestSourceDiscover(t *testing.T) {
 				}
 
 				err := testSource.Discover([]string{tc.name})
+				if m.expected.error != "" {
+					assert.EqualError(t, err, m.expected.error)
+					return
+				}
+
 				assert.NoError(t, err)
 
 				if m.expected.binary != "" {
