@@ -5,14 +5,27 @@ might change, but I like `dist` for the binary name.
 
 ## Overview
 
-Without a doubt, [homebrew](https://brew.sh) has had a major impact on the macOS ecosystem. It has made it easy to 
-install software and keep it up to date. It has been around for 15 years and while it has evolved over time, its core
-technology hasn't changed, and 15 year is an eternity in the tech world. I love homebrew, but I think there's room for
-another tool.
+Without a doubt, [homebrew](https://brew.sh) has had a major impact on the macOS and even the linux ecosystem. It has made it easy
+to install software and keep it up to date. It has been around for 15+ years and while it has evolved over time, its core
+technology hasn't changed, and 15+ years is an eternity in the tech world.
+
+I love homebrew, but I think there's room for another tool.
+
+Distillery is a tool that is designed to make it easy to install binaries on your system from multiple sources. It is
+designed to be simple and easy to use. It is **NOT** designed to be a package manager or handle complex dependencies,
+that's where homebrew shines.
 
 The goal of this project is to leverage the collective power of all the developers out there that are using tools like
-[goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist) and many others to 
-pre-compile their software and put their binaries up on GitHub or GitLab and install the binaries.
+[goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist) and many others to pre-compile their software and put their binaries up on
+GitHub or GitLab and install the binaries.
+
+## Features
+
+- Make it simple to install binaries on your system from multiple sources
+- Do not rely on a centralized repository of metadata like package managers
+- Support binary verifications and signatures if they exist
+- Support multiple platforms and architectures
+- Support private repositories (this was a feature removed from homebrew)
 
 ## Needed Before 1.0
 
@@ -25,18 +38,46 @@ pre-compile their software and put their binaries up on GitHub or GitLab and ins
 
 ## Install
 
+## MacOS/Linux
+
 1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
 2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
 3. Extract and Run `./dist install ekristen/distillery`
 4. Delete `./dist` and the .tar.gz, now use `dist` normally
 5. Run `dist install owner/repo` to install a binary from GitHub Repository
 
+## Windows
+
+1. [Set Your Path](#set-your-path)
+2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
+3. Extract and Run `.\dist.exe install ekristen/distillery`
+4. Delete `.\dist.exe` and the .zip, now use `dist` normally
+5. Run `dist install owner/repo` to install a binary from GitHub Repository
+
+### Set Your Path
+
+#### For Current Session
+
+```powershell
+$env:Path = "C:\Users\<username>\.distillery\bin;" + $env:Path
+```
+
+#### For Current User
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::User)
+```
+
+### For System
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::Machine)
+```
+
 ### Uninstall
 
-1. Simply remove `$HOME/.distillery/bin` from your path
-2. Remove `$HOME/.distillery` directory
-3. Optionally remove cache directory (varies by OS, viewable by the `info` command)
-4. Done
+1. Run `dist info`
+2. Remove the directories listed under the cleanup section
 
 ### Examples
 
@@ -62,25 +103,24 @@ dist install gitlab/gitlab-org/gitlab-runner
 
 Often times installing from GitHub or GitLab is sufficient, but if you are on a MacOS system and Homebrew
 has the binary you want, you can install it using the `homebrew` scope. I would generally still recommend just
-installing from GitHub.
+installing from GitHub or GitLab directly.
 
 ```console
 dist install homebrew/opentofu
 ```
-
-## Goals
-
-- Make it simple to install binaries on your system from multiple sources
-- Do not rely on a centralized repository of metadata like package managers
-- Support binary verifications and signatures if they exist
-- Support multiple platforms and architectures
 
 ## Supported Platforms
 
 - GitHub
 - GitLab
 - Homebrew (binaries only, if anything has a dependency, it will not work at this time)
-- Hashicorp
+- Hashicorp (special handling for their releases, pointing to github repos will automatically pass through)
+
+### Authentication
+
+Distillery supports authentication for GitHub and GitLab. There are CLI options to pass in a token, but the preferred
+method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` environment variables using a tool like
+(direnv)[https://direnv.net/].
 
 ## Behaviors
 
@@ -101,3 +141,10 @@ dist install homebrew/opentofu
   - MacOS `$HOME/Library/Caches/distillery`
   - Linux `$HOME/.cache/distillery`
   - Windows `$HOME/AppData/Local/distillery`
+
+### Caching
+
+At the moment there are two discrete caches. One for HTTP requests and one for downloads. The HTTP cache is used to
+store the ETag and Last-Modified headers from the server to determine if the file has changed. The download cache is
+used to store the downloaded file. The download cache is not used to determine if the file has changed, that is done
+by the HTTP cache.

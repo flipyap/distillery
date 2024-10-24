@@ -2,41 +2,37 @@ package info
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/config"
 )
 
 func Execute(c *cli.Context) error {
-	homeDir, err := os.UserHomeDir()
+	cfg, err := config.New(c.String("config"))
 	if err != nil {
 		return err
 	}
-
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
-		return err
-	}
-
-	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
-	optDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "opt")
 
 	log.Infof("distillery/%s", common.AppVersion.Summary)
+	fmt.Println("")
+	log.Infof("system information")
 	log.Infof("     os: %s", runtime.GOOS)
 	log.Infof("   arch: %s", runtime.GOARCH)
-	log.Infof("   home: %s", homeDir)
-	log.Infof("    bin: %s", binDir)
-	log.Infof("    opt: %s", optDir)
-	log.Infof("  cache: %s", filepath.Join(cacheDir, common.NAME))
-
+	fmt.Println("")
+	log.Infof("configuration")
+	log.Infof("   home: %s", cfg.HomePath)
+	log.Infof("    bin: %s", cfg.BinPath)
+	log.Infof("    opt: %s", cfg.OptPath)
+	log.Infof("  cache: %s", cfg.CachePath)
+	fmt.Println("")
 	log.Warnf("To cleanup all of distillery, remove the following directories:")
-	log.Warnf("  - %s", filepath.Join(cacheDir, common.NAME))
-	log.Warnf("  - %s", filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME)))
+	log.Warnf("  - %s", cfg.GetCachePath())
+	log.Warnf("  - %s", cfg.BinPath)
+	log.Warnf("  - %s", cfg.OptPath)
 
 	return nil
 }

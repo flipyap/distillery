@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+
 	"path/filepath"
 	"strings"
 
@@ -13,12 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const GitHubSource = "github"
 
 type GitHub struct {
-	Source
+	provider.Provider
 
 	client *github.Client
 
@@ -43,7 +45,7 @@ func (s *GitHub) GetApp() string {
 }
 
 func (s *GitHub) GetDownloadsDir() string {
-	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
 func (s *GitHub) GetID() string {
@@ -56,12 +58,12 @@ func (s *GitHub) Run(ctx context.Context) error {
 		return err
 	}
 
-	// this is from the Source struct
+	// this is from the Provider struct
 	if err := s.Discover([]string{s.Repo}); err != nil {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 
@@ -70,7 +72,7 @@ func (s *GitHub) Run(ctx context.Context) error {
 
 // sourceRun - run the source specific logic
 func (s *GitHub) sourceRun(ctx context.Context) error {
-	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	githubToken := s.Options.Settings["github-token"].(string)
@@ -95,7 +97,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	var err error
 	var release *github.RepositoryRelease
 
-	if s.Version == VersionLatest {
+	if s.Version == provider.VersionLatest {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
 		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
 			return err

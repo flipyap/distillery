@@ -24,7 +24,11 @@ type GitLabAsset struct {
 }
 
 func (a *GitLabAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s-%d", a.GitLab.GetOwner(), a.GitLab.GetRepo(), a.GitLab.Version, a.Link.ID)
+	return fmt.Sprintf("%s-%d", a.GetType(), a.Link.ID)
+}
+
+func (a *GitLabAsset) Path() string {
+	return filepath.Join("gitlab", a.GitLab.GetOwner(), a.GitLab.GetRepo(), a.GitLab.Version)
 }
 
 func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolintlint
@@ -47,7 +51,7 @@ func (a *GitLabAsset) Download(ctx context.Context) error { //nolint:dupl,nolint
 	}
 
 	if stats != nil {
-		logrus.Debug("file already downloaded")
+		logrus.Debugf("file already downloaded: %s", assetFile)
 		return nil
 	}
 

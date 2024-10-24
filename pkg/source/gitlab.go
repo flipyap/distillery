@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/ekristen/distillery/pkg/asset"
-	"github.com/ekristen/distillery/pkg/clients/gitlab"
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
+
+	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/clients/gitlab"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 type GitLab struct {
-	Source
+	provider.Provider
 
 	client *gitlab.Client
 
@@ -40,11 +42,11 @@ func (s *GitLab) GetID() string {
 }
 
 func (s *GitLab) GetDownloadsDir() string {
-	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
 func (s *GitLab) sourceRun(ctx context.Context) error {
-	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 	token := s.Options.Settings["gitlab-token"].(string)
@@ -52,7 +54,7 @@ func (s *GitLab) sourceRun(ctx context.Context) error {
 		s.client.SetToken(token)
 	}
 
-	if s.Version == VersionLatest {
+	if s.Version == provider.VersionLatest {
 		release, err := s.client.GetLatestRelease(ctx, fmt.Sprintf("%s/%s", s.Owner, s.Repo))
 		if err != nil {
 			return err
@@ -93,7 +95,7 @@ func (s *GitLab) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 

@@ -12,12 +12,13 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/homebrew"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const HomebrewSource = "homebrew"
 
 type Homebrew struct {
-	Source
+	provider.Provider
 
 	client *homebrew.Client
 
@@ -42,11 +43,11 @@ func (s *Homebrew) GetID() string {
 }
 
 func (s *Homebrew) GetDownloadsDir() string {
-	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
 func (s *Homebrew) sourceRun(ctx context.Context) error {
-	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = homebrew.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
@@ -102,7 +103,7 @@ func (s *Homebrew) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 

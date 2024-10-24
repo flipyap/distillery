@@ -11,48 +11,35 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
-	"github.com/ekristen/distillery/pkg/source"
+	"github.com/ekristen/distillery/pkg/config"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 func Execute(c *cli.Context) error {
-	homeDir, err := os.UserHomeDir()
+	cfg, err := config.New(c.String("config"))
 	if err != nil {
 		return err
 	}
 
-	cacheDir, err := os.UserCacheDir()
-	if err != nil {
+	if err := cfg.MkdirAll(); err != nil {
 		return err
 	}
-
-	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
-	optDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "opt")
-	metadataDir := filepath.Join(cacheDir, common.NAME, "metadata")
-	downloadsDir := filepath.Join(cacheDir, common.NAME, "downloads")
-	_ = os.MkdirAll(binDir, 0755)
-	_ = os.MkdirAll(metadataDir, 0755)
-	_ = os.MkdirAll(downloadsDir, 0755)
 
 	if c.Args().First() == "ekristen/distillery" {
 		_ = c.Set("include-pre-releases", "true")
 	}
 
-	src, err := source.New(c.Args().First(), &source.Options{
-		OS:           c.String("os"),
-		Arch:         c.String("arch"),
-		HomeDir:      homeDir,
-		CacheDir:     cacheDir,
-		BinDir:       binDir,
-		OptDir:       optDir,
-		MetadataDir:  metadataDir,
-		DownloadsDir: downloadsDir,
+	src, err := NewSource(c.Args().First(), &provider.Options{
+		OS:     c.String("os"),
+		Arch:   c.String("arch"),
+		Config: cfg,
 		Settings: map[string]interface{}{
 			"version":              c.String("version"),
 			"github-token":         c.String("github-token"),
 			"gitlab-token":         c.String("gitlab-token"),
 			"no-checksum-verify":   c.Bool("no-checksum-verify"),
-			"include-pre-releases": c.Bool("include-pre-releases"),
 			"no-score-check":       c.Bool("no-score-check"),
+			"include-pre-releases": c.Bool("include-pre-releases"),
 		},
 	})
 	if err != nil {
@@ -85,7 +72,11 @@ func Before(c *cli.Context) error {
 	}
 
 	if c.NArg() > 1 {
-		return fmt.Errorf("only one binary can be specified")
+		for _, arg := range c.Args().Slice() {
+			if strings.HasPrefix(arg, "-") {
+				return fmt.Errorf("flags must be specified before the binary(ies)")
+			}
+		}
 	}
 
 	parts := strings.Split(c.Args().First(), "@")
@@ -105,6 +96,8 @@ func Before(c *cli.Context) error {
 }
 
 func Flags() []cli.Flag {
+	cfgDir, _ := os.UserConfigDir()
+
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name:  "version",
@@ -141,6 +134,13 @@ func Flags() []cli.Flag {
 			Name:  "arch",
 			Usage: "Specify the architecture to install",
 			Value: runtime.GOARCH,
+		},
+		&cli.PathFlag{
+			Name:    "config",
+			Aliases: []string{"c"},
+			Usage:   "Specify the configuration file to use",
+			EnvVars: []string{"DISTILLERY_CONFIG"},
+			Value:   filepath.Join(cfgDir, fmt.Sprintf("%s.yaml", common.NAME)),
 		},
 		&cli.StringFlag{
 			Name:     "github-token",

@@ -12,12 +12,13 @@ import (
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/clients/hashicorp"
+	"github.com/ekristen/distillery/pkg/provider"
 )
 
 const HashicorpSource = "hashicorp"
 
 type Hashicorp struct {
-	Source
+	provider.Provider
 
 	client *hashicorp.Client
 
@@ -43,11 +44,11 @@ func (s *Hashicorp) GetID() string {
 }
 
 func (s *Hashicorp) GetDownloadsDir() string {
-	return filepath.Join(s.Options.DownloadsDir, s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
 
 func (s *Hashicorp) sourceRun(ctx context.Context) error {
-	cacheFile := filepath.Join(s.Options.MetadataDir, fmt.Sprintf("cache-%s", s.GetID()))
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = hashicorp.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
 
@@ -89,6 +90,27 @@ func (s *Hashicorp) sourceRun(ctx context.Context) error {
 		})
 	}
 
+	if len(release.URLShasums) > 0 {
+		s.Assets = append(s.Assets, &HashicorpAsset{
+			Asset:     asset.New(filepath.Base(release.URLShasums), "", s.GetOS(), s.GetArch(), s.Version),
+			Hashicorp: s,
+			Build: &hashicorp.Build{
+				URL: release.URLShasums,
+			},
+			Release: release,
+		})
+	}
+	if len(release.URLShasumsSignatures) > 0 {
+		s.Assets = append(s.Assets, &HashicorpAsset{
+			Asset:     asset.New(filepath.Base(release.URLShasumsSignatures[0]), "", s.GetOS(), s.GetArch(), s.Version),
+			Hashicorp: s,
+			Build: &hashicorp.Build{
+				URL: release.URLShasumsSignatures[0],
+			},
+			Release: release,
+		})
+	}
+
 	return nil
 }
 
@@ -101,7 +123,7 @@ func (s *Hashicorp) Run(ctx context.Context) error {
 		return err
 	}
 
-	if err := s.commonRun(ctx); err != nil {
+	if err := s.CommonRun(ctx); err != nil {
 		return err
 	}
 

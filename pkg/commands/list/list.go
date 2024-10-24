@@ -70,7 +70,7 @@ func init() {
 	cmd := &cli.Command{
 		Name:        "list",
 		Usage:       "list",
-		Description: `list installed binaries`,
+		Description: `list installed binaries and versions`,
 		Before:      common.Before,
 		Flags:       common.Flags(),
 		Action:      Execute,

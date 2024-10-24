@@ -12,7 +12,8 @@ type IAsset interface {
 	GetFilePath() string
 	Download(context.Context) error
 	Extract() error
-	Install(string, string) error
+	Install(string, string, string) error
 	Cleanup() error
 	ID() string
+	Path() string
 }

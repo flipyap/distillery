@@ -6,8 +6,10 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,6 +24,7 @@ import (
 	"github.com/xi2/xz"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/osconfig"
 )
 
 var (
@@ -54,6 +57,10 @@ var (
 
 // Type is the type of asset
 type Type int
+
+func (t Type) String() string {
+	return [...]string{"unknown", "archive", "binary", "installer", "checksum", "signature", "key", "sbom", "data"}[t]
+}
 
 const (
 	Unknown Type = iota
@@ -111,6 +118,7 @@ type Asset struct {
 func (a *Asset) ID() string {
 	return "not-implemented"
 }
+func (a *Asset) Path() string { return "not-implemented" }
 
 func (a *Asset) GetName() string {
 	return a.Name
@@ -218,11 +226,8 @@ func (a *Asset) copyFile(srcFile, dstFile string) error {
 	return nil
 }
 
-// Install installs the asset
-// TODO(ek): simplify this function
-func (a *Asset) Install(id, binDir string) error { //nolint:funlen
-	found := false
-
+// determineInstallable determines if the file is installable or not based on the mimetype
+func (a *Asset) determineInstallable() {
 	logrus.Tracef("files to process: %d", len(a.Files))
 	for _, file := range a.Files {
 		// Actual path to the downloaded/extracted file
@@ -231,7 +236,7 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 		logrus.Debug("checking file for installable: ", file.Name)
 		m, err := mimetype.DetectFile(fullPath)
 		if err != nil {
-			return err
+			logrus.WithError(err).Warn("unable to determine mimetype")
 		}
 
 		logrus.Debug("found mimetype: ", m.String())
@@ -246,6 +251,18 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 			file.Installable = true
 		}
 	}
+}
+
+// Install installs the asset
+// TODO(ek): simplify this function
+func (a *Asset) Install(id, binDir, optDir string) error {
+	found := false
+
+	if err := os.MkdirAll(optDir, 0755); err != nil {
+		return err
+	}
+
+	a.determineInstallable()
 
 	for _, file := range a.Files {
 		if !file.Installable {
@@ -272,14 +289,23 @@ func (a *Asset) Install(id, binDir string) error { //nolint:funlen
 		dstFilename = strings.ReplaceAll(dstFilename, fmt.Sprintf("v%s", a.Version), "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Version, "")
 
+		if a.OS == osconfig.Windows || strings.HasSuffix(dstFilename, ".exe") {
+			dstFilename = strings.TrimSuffix(dstFilename, ".exe")
+		}
+
 		dstFilename = strings.TrimSpace(dstFilename)
 		dstFilename = strings.TrimRight(dstFilename, "-")
 		dstFilename = strings.TrimRight(dstFilename, "_")
 
+		if a.OS == osconfig.Windows {
+			dstFilename = fmt.Sprintf("%s.exe", dstFilename)
+		}
+
 		logrus.Tracef("post-dstFilename: %s", dstFilename)
 
-		destBinaryName := fmt.Sprintf("%s-%s", id, dstFilename)
-		destBinFilename := filepath.Join(binDir, destBinaryName)
+		destBinaryName := fmt.Sprintf("%s-%s", dstFilename, id)
+		// Note: copy to the opt dir for organization
+		destBinFilename := filepath.Join(optDir, destBinaryName)
 		defaultBinFilename := filepath.Join(binDir, dstFilename)
 
 		versionedBinFilename := fmt.Sprintf("%s@%s", defaultBinFilename, strings.TrimLeft(a.Version, "v"))
@@ -465,7 +491,11 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 
 		// TODO(ek): do we need to somehow check the location in the tar file?
 
-		target := filepath.Join(a.TempDir, header.Name) //nolint:gosec
+		target, err := sanitizeArchivePath(a.TempDir, header.Name)
+		if err != nil {
+			return nil, err
+		}
+
 		logrus.Tracef("tar > target %s", target)
 
 		switch header.Typeflag {
@@ -487,7 +517,12 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 				logrus.Tracef("tar > create directory %s", baseDir)
 			}
 
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			convertedMode, err := int64ToUint32(header.Mode)
+			if err != nil {
+				return nil, err
+			}
+
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(convertedMode))
 			if err != nil {
 				return nil, err
 			}
@@ -534,4 +569,22 @@ func (a *Asset) processXz(in io.Reader) (io.Reader, error) {
 func (a *Asset) processBz2(in io.Reader) (io.Reader, error) {
 	br := bzip2.NewReader(in)
 	return br, nil
+}
+
+func int64ToUint32(value int64) (uint32, error) {
+	if value < 0 || value > math.MaxUint32 {
+		return 0, errors.New("value out of range for uint32")
+	}
+	return uint32(value), nil
+}
+
+// sanitizeArchivePath ensures that the path is not tainted
+// thanks https://github.com/securego/gosec/issues/324#issuecomment-935927967
+func sanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
 }
