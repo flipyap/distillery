@@ -6,8 +6,10 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -127,7 +129,6 @@ func (a *Asset) GetDisplayName() string {
 }
 
 func (a *Asset) GetType() Type {
-
 	return a.Type
 }
 
@@ -254,7 +255,7 @@ func (a *Asset) determineInstallable() {
 
 // Install installs the asset
 // TODO(ek): simplify this function
-func (a *Asset) Install(id, binDir string, optDir string) error { //nolint:funlen
+func (a *Asset) Install(id, binDir, optDir string) error {
 	found := false
 
 	if err := os.MkdirAll(optDir, 0755); err != nil {
@@ -490,7 +491,11 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 
 		// TODO(ek): do we need to somehow check the location in the tar file?
 
-		target := filepath.Join(a.TempDir, header.Name) //nolint:gosec
+		target, err := sanitizeArchivePath(a.TempDir, header.Name)
+		if err != nil {
+			return nil, err
+		}
+
 		logrus.Tracef("tar > target %s", target)
 
 		switch header.Typeflag {
@@ -512,7 +517,12 @@ func (a *Asset) processTar(in io.Reader) (io.Reader, error) {
 				logrus.Tracef("tar > create directory %s", baseDir)
 			}
 
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			convertedMode, err := int64ToUint32(header.Mode)
+			if err != nil {
+				return nil, err
+			}
+
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(convertedMode))
 			if err != nil {
 				return nil, err
 			}
@@ -559,4 +569,22 @@ func (a *Asset) processXz(in io.Reader) (io.Reader, error) {
 func (a *Asset) processBz2(in io.Reader) (io.Reader, error) {
 	br := bzip2.NewReader(in)
 	return br, nil
+}
+
+func int64ToUint32(value int64) (uint32, error) {
+	if value < 0 || value > math.MaxUint32 {
+		return 0, errors.New("value out of range for uint32")
+	}
+	return uint32(value), nil
+}
+
+// sanitizeArchivePath ensures that the path is not tainted
+// thanks https://github.com/securego/gosec/issues/324#issuecomment-935927967
+func sanitizeArchivePath(d, t string) (v string, err error) {
+	v = filepath.Join(d, t)
+	if strings.HasPrefix(v, filepath.Clean(d)) {
+		return v, nil
+	}
+
+	return "", fmt.Errorf("%s: %s", "content filepath is tainted", t)
 }

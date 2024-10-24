@@ -2,12 +2,13 @@ package info
 
 import (
 	"fmt"
-	"github.com/apex/log"
-	"github.com/ekristen/distillery/pkg/config"
-	"github.com/urfave/cli/v2"
 	"runtime"
 
+	"github.com/apex/log"
+	"github.com/urfave/cli/v2"
+
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/config"
 )
 
 func Execute(c *cli.Context) error {

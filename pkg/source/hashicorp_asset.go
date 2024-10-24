@@ -28,8 +28,7 @@ func (a *HashicorpAsset) ID() string {
 	urlHash := sha256.Sum256([]byte(a.Build.URL))
 	urlHashShort := fmt.Sprintf("%x", urlHash)[:9]
 
-	return fmt.Sprintf("%s-%s-%s-%s",
-		a.Hashicorp.GetSource(), a.Hashicorp.GetRepo(), a.Hashicorp.Version, urlHashShort)
+	return fmt.Sprintf("%s-%s", a.GetType(), urlHashShort)
 }
 
 func (a *HashicorpAsset) Path() string {

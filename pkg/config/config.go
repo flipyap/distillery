@@ -29,6 +29,9 @@ type Config struct {
 	// CachePath - path to store cache files, this path is set by default based on the operating system type
 	CachePath string `yaml:"cache_path" toml:"cache_path"`
 
+	// DefaultSource - the default source to use when installing binaries, this defaults to github
+	DefaultSource string `yaml:"default_source" toml:"default_source"`
+
 	// AutomaticAliases - automatically create aliases for any binary that is installed
 	AutomaticAliases bool `yaml:"automatic_aliases" toml:"automatic_aliases"`
 
@@ -93,6 +96,10 @@ func New(path string) (*Config, error) {
 
 	if cfg.Language == "" {
 		cfg.Language = "en"
+	}
+
+	if cfg.DefaultSource == "" {
+		cfg.DefaultSource = "github"
 	}
 
 	if cfg.HomePath == "" {

@@ -25,8 +25,7 @@ type HomebrewAsset struct {
 }
 
 func (a *HomebrewAsset) ID() string {
-	return fmt.Sprintf("%s-%s-%s-%s",
-		a.Homebrew.GetOwner(), a.Homebrew.GetRepo(), a.Homebrew.Version, a.FileVariant.Sha256[:9])
+	return fmt.Sprintf("%s-%s", a.GetType(), a.FileVariant.Sha256[:9])
 }
 
 func (a *HomebrewAsset) Path() string {

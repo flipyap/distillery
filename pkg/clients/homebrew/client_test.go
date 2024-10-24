@@ -73,12 +73,11 @@ func TestHomebrewClient(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := tt.testFunc()
-			if tt.shouldFail {
+			err := tc.testFunc()
+			if tc.shouldFail {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)

@@ -90,6 +90,27 @@ func (s *Hashicorp) sourceRun(ctx context.Context) error {
 		})
 	}
 
+	if len(release.URLShasums) > 0 {
+		s.Assets = append(s.Assets, &HashicorpAsset{
+			Asset:     asset.New(filepath.Base(release.URLShasums), "", s.GetOS(), s.GetArch(), s.Version),
+			Hashicorp: s,
+			Build: &hashicorp.Build{
+				URL: release.URLShasums,
+			},
+			Release: release,
+		})
+	}
+	if len(release.URLShasumsSignatures) > 0 {
+		s.Assets = append(s.Assets, &HashicorpAsset{
+			Asset:     asset.New(filepath.Base(release.URLShasumsSignatures[0]), "", s.GetOS(), s.GetArch(), s.Version),
+			Hashicorp: s,
+			Build: &hashicorp.Build{
+				URL: release.URLShasumsSignatures[0],
+			},
+			Release: release,
+		})
+	}
+
 	return nil
 }
 

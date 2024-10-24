@@ -472,6 +472,10 @@ func TestAssetInstall(t *testing.T) {
 			assert.NoError(t, err)
 			defer os.RemoveAll(binDir)
 
+			optDir, err := os.MkdirTemp("", "opt")
+			assert.NoError(t, err)
+			defer os.RemoveAll(optDir)
+
 			version := c.version
 			if version == "" {
 				version = "1.0.0"
@@ -483,7 +487,7 @@ func TestAssetInstall(t *testing.T) {
 			err = asset.Extract()
 			assert.NoError(t, err)
 
-			err = asset.Install("test-id", binDir)
+			err = asset.Install("test-id", binDir, optDir)
 			assert.NoError(t, err)
 
 			for _, fileName := range c.expectedFiles {

@@ -2,7 +2,6 @@ package install
 
 import (
 	"fmt"
-	"github.com/ekristen/distillery/pkg/config"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/config"
 	"github.com/ekristen/distillery/pkg/provider"
 )
 

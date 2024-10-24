@@ -2,13 +2,13 @@ package provider_test
 
 import (
 	"fmt"
-	"github.com/ekristen/distillery/pkg/commands/install"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/commands/install"
 	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/ekristen/distillery/pkg/provider"
 	"github.com/ekristen/distillery/pkg/source"

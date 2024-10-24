@@ -1,7 +1,6 @@
 package osconfig_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,11 +31,9 @@ func TestOS_GetOS(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			fmt.Println(tt.os.GetOS())
-			assert.ElementsMatch(t, tt.expected, tt.os.GetOS())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expected, tc.os.GetOS())
 		})
 	}
 }
@@ -94,10 +91,9 @@ func TestOS_GetArchitectures(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert.ElementsMatch(t, tt.expected, tt.os.GetArchitectures())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expected, tc.os.GetArchitectures())
 		})
 	}
 }
@@ -125,10 +121,9 @@ func TestOS_GetExtensions(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			assert.ElementsMatch(t, tt.expected, tt.os.GetExtensions())
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expected, tc.os.GetExtensions())
 		})
 	}
 }
