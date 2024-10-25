@@ -31,7 +31,7 @@ type Config struct {
 
 	// DefaultSource - the default source to use when installing binaries, this defaults to GitHub
 	DefaultSource string `yaml:"default_source" toml:"default_source"`
-	
+
 	// AutomaticAliases - automatically create aliases for any binary that is installed
 	AutomaticAliases bool `yaml:"automatic_aliases" toml:"automatic_aliases"`
 

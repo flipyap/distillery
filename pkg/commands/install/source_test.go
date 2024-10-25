@@ -1,11 +1,11 @@
 package install
 
 import (
-	"github.com/ekristen/distillery/pkg/config"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ekristen/distillery/pkg/config"
 	"github.com/ekristen/distillery/pkg/provider"
 	"github.com/ekristen/distillery/pkg/source"
 )

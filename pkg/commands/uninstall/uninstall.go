@@ -2,17 +2,18 @@ package uninstall
 
 import (
 	"fmt"
-	"github.com/apex/log"
-	"github.com/ekristen/distillery/pkg/provider"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/apex/log"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
+
 	"github.com/ekristen/distillery/pkg/common"
 	"github.com/ekristen/distillery/pkg/config"
+	"github.com/ekristen/distillery/pkg/provider"
 
 	"github.com/ekristen/distillery/pkg/commands/install"
 )

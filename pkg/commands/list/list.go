@@ -1,12 +1,12 @@
 package list
 
 import (
-	"github.com/apex/log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
@@ -67,7 +67,6 @@ func Execute(c *cli.Context) error {
 		var versions []string
 		for version := range bins[key] {
 			versions = append(versions, version)
-
 		}
 		log.Infof("%s (versions: %s)", key, strings.Join(versions, ", "))
 	}
