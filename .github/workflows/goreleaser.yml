@@ -7,6 +7,7 @@ on:
       - main
       - next
       - alpha
+      - beta
     tags:
       - "*"
   release:

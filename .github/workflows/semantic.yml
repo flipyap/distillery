@@ -5,6 +5,7 @@ on:
       - main
       - next
       - alpha
+      - beta
 
 permissions:
   contents: read # for checkout
