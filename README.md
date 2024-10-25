@@ -121,10 +121,25 @@ method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` envi
 
 ## Behaviors
 
-- Caching of HTTP calls where possible (GitHub primarily)
-- Caching of downloads
 - Allow for multiple versions of a binary using `tool@version` syntax
 - Running installation for any version will automatically update the default symlink to that version (i.e. switching versions)
+- Caching of HTTP calls where possible (GitHub primarily)
+- Caching of downloads
+
+### Running install always updates default symlink
+
+**Note:** this might change before exiting beta.
+
+Whenever you run install the default symlink will always be updated to whatever version you specify. This is to make
+it easy to switch versions.
+
+### Multiple Versions
+
+Every time you run install it will by default seek out the latest version, it will not remove any other versions. All
+versions are symlinked with the suffix `@version` this means you can have multiple versions installed at the same time.
+
+It also means you can call any version any time using the `@version` syntax or if you are using something like [direnv](https://direnv.net/)
+you can set aliases in your `.envrc` file for specific versions.
 
 ## Directory Structure
 
@@ -145,3 +160,7 @@ At the moment there are two discrete caches. One for HTTP requests and one for d
 store the ETag and Last-Modified headers from the server to determine if the file has changed. The download cache is
 used to store the downloaded file. The download cache is not used to determine if the file has changed, that is done
 by the HTTP cache.
+
+If you need to delete your cache simply run `dist info` identify the cache directory and remove it.
+
+**Note:** I may add a cache clear command in the future.
