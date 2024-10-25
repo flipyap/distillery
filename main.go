@@ -12,6 +12,7 @@ import (
 	"github.com/ekristen/distillery/pkg/common"
 
 	_ "github.com/ekristen/distillery/pkg/commands/clean"
+	_ "github.com/ekristen/distillery/pkg/commands/completion"
 	_ "github.com/ekristen/distillery/pkg/commands/info"
 	_ "github.com/ekristen/distillery/pkg/commands/install"
 	_ "github.com/ekristen/distillery/pkg/commands/list"
@@ -48,6 +49,8 @@ func main() {
 	app.CommandNotFound = func(context *cli.Context, command string) {
 		log.Fatalf("command %s not found.", command)
 	}
+
+	app.EnableBashCompletion = true
 
 	ctx := signals.SetupSignalContext()
 	if err := app.RunContext(ctx, os.Args); err != nil {

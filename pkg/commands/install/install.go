@@ -99,6 +99,10 @@ func Before(c *cli.Context) error {
 
 func Flags() []cli.Flag {
 	cfgDir, _ := os.UserConfigDir()
+	homeDir, _ := os.UserHomeDir()
+	if runtime.GOOS == "darwin" {
+		cfgDir = filepath.Join(homeDir, ".config")
+	}
 
 	return []cli.Flag{
 		&cli.StringFlag{
@@ -146,7 +150,7 @@ func Flags() []cli.Flag {
 			Aliases: []string{"c"},
 			Usage:   "Specify the configuration file to use",
 			EnvVars: []string{"DISTILLERY_CONFIG"},
-			Value:   filepath.Join(cfgDir, fmt.Sprintf("%s.yaml", common.NAME)),
+			Value:   filepath.Join(cfgDir, fmt.Sprintf("%s.toml", common.NAME)),
 		},
 		&cli.StringFlag{
 			Name:     "github-token",
@@ -181,12 +185,12 @@ func init() {
 	cmd := &cli.Command{
 		Name:        "install",
 		Usage:       "install [provider/]owner/repo[@version]",
-		Description: fmt.Sprintf(`install a binary. default location is $HOME/.%s/bin`, common.NAME),
+		Description: fmt.Sprintf(`install binaries fast. default location is $HOME/.%s/bin`, common.NAME),
 		Before:      Before,
 		Flags:       append(Flags(), common.Flags()...),
 		Action:      Execute,
 		Args:        true,
-		ArgsUsage:   " [provider/]owner/repo[@version]",
+		ArgsUsage:   "[provider/]owner/repo[@version]",
 	}
 
 	common.RegisterCommand(cmd)

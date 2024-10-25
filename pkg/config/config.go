@@ -29,9 +29,9 @@ type Config struct {
 	// CachePath - path to store cache files, this path is set by default based on the operating system type
 	CachePath string `yaml:"cache_path" toml:"cache_path"`
 
-	// DefaultSource - the default source to use when installing binaries, this defaults to github
+	// DefaultSource - the default source to use when installing binaries, this defaults to GitHub
 	DefaultSource string `yaml:"default_source" toml:"default_source"`
-
+	
 	// AutomaticAliases - automatically create aliases for any binary that is installed
 	AutomaticAliases bool `yaml:"automatic_aliases" toml:"automatic_aliases"`
 
