@@ -6,18 +6,18 @@ might change, but I like `dist` for the binary name.
 ## Overview
 
 Without a doubt, [homebrew](https://brew.sh) has had a major impact on the macOS and even the linux ecosystem. It has made it easy
-to install software and keep it up to date. It has been around for 15+ years and while it has evolved over time, its core
-technology hasn't changed, and 15+ years is an eternity in the tech world.
+to install software and keep it up to date. However, it has been around for 15+ years and while it has evolved over time,
+its core technology really hasn't changed, and 15+ years is an eternity in the tech world. Languages like [Go](https://golang.org)
+and [Rust](https://www.rust-lang.org) have made it easy to compile binaries and distribute them without complicated
+installers or dependencies. **I love homebrew**, but I think there's room for another tool.
 
-I love homebrew, but I think there's room for another tool.
+`dist`illery is a tool that is designed to make it easy to install binaries on your system from multiple different
+sources. It is designed to be simple and easy to use. It is **NOT** designed to be a package manager or handle complex
+dependencies, that's where homebrew shines.
 
-Distillery is a tool that is designed to make it easy to install binaries on your system from multiple sources. It is
-designed to be simple and easy to use. It is **NOT** designed to be a package manager or handle complex dependencies,
-that's where homebrew shines.
-
-The goal of this project is to leverage the collective power of all the developers out there that are using tools like
-[goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist) and many others to pre-compile their software and put their binaries up on
-GitHub or GitLab and install the binaries.
+The goal of this project is to install binaries by leverage the collective power of all the developers out there that
+are using tools like [goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist)
+and many others to pre-compile their software and put their binaries up on GitHub or GitLab.
 
 ## Features
 
