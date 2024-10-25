@@ -11,7 +11,7 @@ its core technology really hasn't changed, and 15+ years is an eternity in the t
 and [Rust](https://www.rust-lang.org) have made it easy to compile binaries and distribute them without complicated
 installers or dependencies. **I love homebrew**, but I think there's room for another tool.
 
-`dist`illery is a tool that is designed to make it easy to install binaries on your system from multiple different
+**dist**illery is a tool that is designed to make it easy to install binaries on your system from multiple different
 sources. It is designed to be simple and easy to use. It is **NOT** designed to be a package manager or handle complex
 dependencies, that's where homebrew shines.
 
@@ -21,20 +21,12 @@ and many others to pre-compile their software and put their binaries up on GitHu
 
 ## Features
 
-- Make it simple to install binaries on your system from multiple sources
-- Do not rely on a centralized repository of metadata like package managers
-- Support binary verifications and signatures if they exist
+- Simple to install binaries on your system from multiple sources
+- No reliance on a centralized repository of metadata like package managers
 - Support multiple platforms and architectures
 - Support private repositories (this was a feature removed from homebrew)
-
-## Needed Before 1.0
-
-- [x] make defaults configurable (bin directory for example)
-- [x] finish bin re-org under `opt/`
-- [ ] detect already installed versions
-- [ ] implement signature verification
-- [ ] implement uninstall
-- [x] implement cleanup
+- Support checksum verifications (if they exist)
+- Support signatures verifications (if they exist) (**not implemented yet**)
 
 ## Install
 
