@@ -5,6 +5,9 @@
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ekristen/distillery/total)
 ![GitHub License](https://img.shields.io/github/license/ekristen/distillery)
 
+[![Known Vulnerabilities](https://snyk.io/test/github/ekristen/distillery/badge.svg)](https://snyk.io/test/github/ekristen/distillery)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ekristen/distillery)](https://goreportcard.com/report/github.com/ekristen/distillery)
+
 Most things are working, this project follows semantic commits and semantic releases, any breaking
 changes will result in new major versions.
 
