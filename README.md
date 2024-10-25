@@ -1,7 +1,12 @@
 # Distillery
 
-**Status: beta** - most things are working, this project follows semantic commits and semantic releases, any breaking
-changes will result in new major versions. 
+![Static Badge](https://img.shields.io/badge/Status%20-%20Beta%20-%20orange)
+![GitHub Release](https://img.shields.io/github/v/release/ekristen/distillery?include_prereleases)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ekristen/distillery/total)
+![GitHub License](https://img.shields.io/github/license/ekristen/distillery)
+
+Most things are working, this project follows semantic commits and semantic releases, any breaking
+changes will result in new major versions.
 
 ## Overview
 
