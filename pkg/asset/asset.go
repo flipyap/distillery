@@ -306,6 +306,8 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 		destBinaryName := dstFilename
 		// Note: copy to the opt dir for organization
 		destBinFilename := filepath.Join(optDir, destBinaryName)
+
+		// Note: we put all symlinks into the bin dir
 		defaultBinFilename := filepath.Join(binDir, dstFilename)
 
 		versionedBinFilename := fmt.Sprintf("%s@%s", defaultBinFilename, strings.TrimLeft(a.Version, "v"))

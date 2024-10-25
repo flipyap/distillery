@@ -3,10 +3,11 @@ plugins:
   - "@semantic-release/release-notes-generator"
   - "@semantic-release/github"
 branches:
-  - name: +([0-9])?(.{+([0-9]),x}).x
   - name: main
-  - name: next
+  - name: beta
     prerelease: true
+    channel: beta
   - name: alpha
     prerelease: true
     channel: alpha
+  - name: +([0-9])?(.{+([0-9]),x}).x
