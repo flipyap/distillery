@@ -1,6 +1,6 @@
 {
   "extends": [
-    "config:recommended"
+    "config:best-practices"
   ],
   "vulnerabilityAlerts": {
     "labels": ["security"],
@@ -60,8 +60,7 @@
         "action"
       ],
       "matchCurrentVersion": "!/^0/",
-      "automerge": true,
-      "labels": ["bot/skip-changelog"]
+      "automerge": true
     }
   ],
   "regexManagers": [
