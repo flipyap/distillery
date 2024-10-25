@@ -77,6 +77,8 @@ func Before(c *cli.Context) error {
 				return fmt.Errorf("flags must be specified before the binary(ies)")
 			}
 		}
+
+		return fmt.Errorf("currently only one binary can be installed at a time")
 	}
 
 	parts := strings.Split(c.Args().First(), "@")
@@ -108,22 +110,26 @@ func Flags() []cli.Flag {
 			Name:     "asset",
 			Usage:    "The exact name of the asset to use, useful when auto-detection fails",
 			Category: "Target Selection",
+			Hidden:   true,
 		},
 		&cli.StringFlag{
 			Name:     "suffix",
 			Usage:    "Specify the suffix to use for the binary (default is auto-detect based on OS)",
 			Category: "Target Selection",
+			Hidden:   true,
 		},
 		&cli.StringFlag{
 			Name:     "bin",
 			Usage:    "Install only the selected binary",
 			Category: "Target Selection",
+			Hidden:   true,
 		},
 		&cli.BoolFlag{
 			Name:     "bins",
 			Usage:    "Install all binaries",
 			Category: "Target Selection",
 			Value:    true,
+			Hidden:   true,
 		},
 		&cli.StringFlag{
 			Name:  "os",
@@ -156,17 +162,17 @@ func Flags() []cli.Flag {
 		},
 		&cli.BoolFlag{
 			Name:    "include-pre-releases",
-			Usage:   "Include pre-releases in the list of available versions",
+			Usage:   "include pre-releases in the list of available versions",
 			EnvVars: []string{"DISTILLERY_INCLUDE_PRE_RELEASES"},
 			Aliases: []string{"pre"},
 		},
 		&cli.BoolFlag{
 			Name:  "no-checksum-verify",
-			Usage: "Disable checksum verification",
+			Usage: "disable checksum verification",
 		},
 		&cli.BoolFlag{
 			Name:  "no-score-check",
-			Usage: "Disable scoring check",
+			Usage: "disable scoring check",
 		},
 	}
 }

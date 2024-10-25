@@ -303,7 +303,7 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 
 		logrus.Tracef("post-dstFilename: %s", dstFilename)
 
-		destBinaryName := fmt.Sprintf("%s-%s", dstFilename, id)
+		destBinaryName := dstFilename
 		// Note: copy to the opt dir for organization
 		destBinFilename := filepath.Join(optDir, destBinaryName)
 		defaultBinFilename := filepath.Join(binDir, dstFilename)
@@ -317,7 +317,7 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 
 		// create symlink
 		// TODO: check if symlink exists
-		// TODO: allow override
+		// TODO: handle errors
 		if runtime.GOOS == a.OS && runtime.GOARCH == a.Arch {
 			logrus.Debugf("creating symlink: %s to %s", defaultBinFilename, destBinFilename)
 			logrus.Debugf("creating symlink: %s to %s", versionedBinFilename, destBinFilename)

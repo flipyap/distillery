@@ -1,27 +1,27 @@
 package list
 
 import (
-	"fmt"
+	"github.com/apex/log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/config"
 )
 
 func Execute(c *cli.Context) error {
-	homeDir, err := os.UserHomeDir()
+	cfg, err := config.New(c.String("config"))
 	if err != nil {
 		return err
 	}
 
-	binDir := filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME), "bin")
-
 	bins := make(map[string]map[string]string)
 
-	_ = filepath.Walk(binDir, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(cfg.BinPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -56,11 +56,20 @@ func Execute(c *cli.Context) error {
 		return nil
 	})
 
-	for name, paths := range bins {
-		fmt.Println("> ", name)
-		for version, path := range paths {
-			fmt.Println("  - ", version, path)
+	var keys []string
+	for key := range bins {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		var versions []string
+		for version := range bins[key] {
+			versions = append(versions, version)
+
 		}
+		log.Infof("%s (versions: %s)", key, strings.Join(versions, ", "))
 	}
 
 	return nil
