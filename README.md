@@ -112,7 +112,7 @@ dist install homebrew/opentofu
 
 Distillery supports authentication for GitHub and GitLab. There are CLI options to pass in a token, but the preferred
 method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` environment variables using a tool like
-(direnv)[https://direnv.net/].
+[direnv](https://direnv.net/).
 
 ## Behaviors
 
