@@ -1,7 +1,7 @@
 # Distillery
 
-**Status: alpha** -- things are not fully implemented, things are likely broken. Things are likely to change. Name
-might change, but I like `dist` for the binary name.
+**Status: beta** - most things are working, this project follows semantic commits and semantic releases, any breaking
+changes will result in new major versions. 
 
 ## Overview
 
