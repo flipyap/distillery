@@ -137,7 +137,7 @@ func TestOS_InvalidOS(t *testing.T) {
 		{
 			name:     "Windows",
 			os:       osconfig.New(osconfig.Windows, osconfig.AMD64),
-			expected: []string{osconfig.Linux, osconfig.Darwin},
+			expected: []string{osconfig.Linux, osconfig.Darwin, osconfig.FreeBSD},
 		},
 		{
 			name:     "Linux",
@@ -147,7 +147,7 @@ func TestOS_InvalidOS(t *testing.T) {
 		{
 			name:     "Darwin",
 			os:       osconfig.New(osconfig.Darwin, osconfig.AMD64),
-			expected: []string{osconfig.Windows, osconfig.Linux},
+			expected: []string{osconfig.Windows, osconfig.Linux, osconfig.FreeBSD},
 		},
 	}
 

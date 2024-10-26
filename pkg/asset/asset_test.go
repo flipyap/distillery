@@ -491,8 +491,8 @@ func TestAssetInstall(t *testing.T) {
 			assert.NoError(t, err)
 
 			for _, fileName := range c.expectedFiles {
-				destBinaryName := fmt.Sprintf("test-id-%s", filepath.Base(fileName))
-				destBinPath := filepath.Join(binDir, destBinaryName)
+				destBinaryName := filepath.Base(fileName)
+				destBinPath := filepath.Join(optDir, destBinaryName)
 
 				baseLinkName := filepath.Join(binDir, filepath.Base(fileName))
 				versionedLinkName := filepath.Join(binDir, fmt.Sprintf("%s@%s", filepath.Base(fileName), "1.0.0"))
