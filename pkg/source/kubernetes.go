@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/apex/log"
+	"github.com/google/go-github/v66/github"
+	"github.com/gregjones/httpcache"
+	"github.com/gregjones/httpcache/diskcache"
+
 	"github.com/ekristen/distillery/pkg/asset"
 )
 
@@ -26,7 +31,7 @@ func (s *Kubernetes) GetRepo() string {
 	return s.Repo
 }
 func (s *Kubernetes) GetApp() string {
-	return fmt.Sprintf("%s/%s", s.Owner, s.Repo)
+	return fmt.Sprintf("%s/%s", s.Owner, s.AppName)
 }
 func (s *Kubernetes) GetID() string {
 	return fmt.Sprintf("%s-%s", s.GetSource(), s.GetRepo())
@@ -34,6 +39,28 @@ func (s *Kubernetes) GetID() string {
 
 func (s *Kubernetes) GetDownloadsDir() string {
 	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
+}
+
+// sourceRun - run the source specific logic (note this is duplicate because of the GetReleaseAssets override)
+func (s *Kubernetes) sourceRun(ctx context.Context) error { //nolint:dupl
+	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
+
+	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	githubToken := s.Options.Settings["github-token"].(string)
+	if githubToken != "" {
+		log.Debug("auth token provided")
+		s.client = s.client.WithAuthToken(githubToken)
+	}
+
+	if err := s.FindRelease(ctx); err != nil {
+		return err
+	}
+
+	if err := s.GetReleaseAssets(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Kubernetes) GetReleaseAssets(_ context.Context) error {
