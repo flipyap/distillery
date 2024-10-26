@@ -9,7 +9,7 @@ import (
 	"github.com/ekristen/distillery/pkg/source"
 )
 
-func NewSource(src string, opts *provider.Options) (provider.ISource, error) {
+func NewSource(src string, opts *provider.Options) (provider.ISource, error) { //nolint:funlen,gocyclo
 	detectedOS := osconfig.New(opts.OS, opts.Arch)
 
 	version := "latest"
@@ -36,6 +36,16 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) {
 				Repo:     parts[0],
 				Version:  version,
 			}, nil
+		case source.KubernetesSource:
+			return &source.Kubernetes{
+				GitHub: source.GitHub{
+					Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
+					Owner:    source.KubernetesSource,
+					Repo:     source.KubernetesSource,
+					Version:  version,
+				},
+				AppName: parts[0],
+			}, nil
 		}
 
 		return nil, fmt.Errorf("invalid install source, expect format of owner/repo or owner/repo@version")
@@ -55,6 +65,16 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) {
 				Owner:    parts[1],
 				Repo:     parts[1],
 				Version:  version,
+			}, nil
+		} else if parts[0] == source.KubernetesSource {
+			return &source.Kubernetes{
+				GitHub: source.GitHub{
+					Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
+					Owner:    source.KubernetesSource,
+					Repo:     source.KubernetesSource,
+					Version:  version,
+				},
+				AppName: parts[1],
 			}, nil
 		}
 
@@ -84,6 +104,16 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) {
 					Owner:    parts[1],
 					Repo:     parts[2],
 					Version:  version,
+				}, nil
+			} else if parts[1] == source.KubernetesSource {
+				return &source.Kubernetes{
+					GitHub: source.GitHub{
+						Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
+						Owner:    source.KubernetesSource,
+						Repo:     source.KubernetesSource,
+						Version:  version,
+					},
+					AppName: parts[2],
 				}, nil
 			}
 
