@@ -4,6 +4,8 @@ release:
     owner: ekristen
     name: distillery
   prerelease: auto
+env:
+  - CGO_ENABLED=0
 builds:
   - id: distillery
     binary: dist
@@ -49,7 +51,6 @@ archives:
 signs:
   - ids:
       - default
-      - darwin
     cmd: cosign
     signature: "${artifact}.sig"
     certificate: "${artifact}.pem"
