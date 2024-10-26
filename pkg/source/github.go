@@ -97,6 +97,8 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	var err error
 	var release *github.RepositoryRelease
 
+	logrus.WithField("owner", s.GetOwner()).WithField("repo", s.GetRepo()).Trace("finding release")
+
 	if s.Version == provider.VersionLatest {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
 		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
@@ -139,7 +141,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		return fmt.Errorf("release not found")
 	}
 
-	log.Infof("installing version: %s", strings.TrimPrefix(release.GetTagName(), "v"))
+	log.Infof("selected version: %s", strings.TrimPrefix(release.GetTagName(), "v"))
 
 	s.Release = release
 

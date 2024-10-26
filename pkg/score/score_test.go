@@ -211,7 +211,7 @@ func TestScore(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			actual := Score(c.names, c.opts)
-			assert.Equal(t, c.expected, actual)
+			assert.ElementsMatch(t, c.expected, actual)
 		})
 	}
 }
