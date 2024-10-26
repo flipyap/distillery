@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli/v2"
@@ -16,6 +17,8 @@ import (
 )
 
 func Execute(c *cli.Context) error {
+	start := time.Now().UTC()
+
 	cfg, err := config.New(c.String("config"))
 	if err != nil {
 		return err
@@ -61,7 +64,9 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	log.Infof("installation complete")
+	elapsed := time.Since(start)
+
+	log.Infof("installation complete in %s", elapsed)
 
 	return nil
 }

@@ -71,7 +71,7 @@ func (s *GitHub) Run(ctx context.Context) error {
 }
 
 // sourceRun - run the source specific logic
-func (s *GitHub) sourceRun(ctx context.Context) error {
+func (s *GitHub) sourceRun(ctx context.Context) error { //nolint:dupl
 	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = github.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
