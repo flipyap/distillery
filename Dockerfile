@@ -1,10 +1,10 @@
-# syntax=docker/dockerfile:1.10-labs
-FROM cgr.dev/chainguard/wolfi-base:latest as base
+# syntax=docker/dockerfile:1.10-labs@sha256:940282bab7a18daad689c238d407ad22393369ad53c6125c9c00f8be8a9da678
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:8ece91a71d17ae3792056b3bfa64cb80dfbcb01848b320e446dd632ff9672491 as base
 ARG PROJECT_NAME=distillery
 RUN apk add --no-cache ca-certificates
 RUN addgroup -S ${PROJECT_NAME} && adduser -S ${PROJECT_NAME} -G ${PROJECT_NAME}
 
-FROM ghcr.io/acorn-io/images-mirror/golang:1.21 AS build
+FROM ghcr.io/acorn-io/images-mirror/golang:1.21@sha256:856073656d1a517517792e6cdd2f7a5ef080d3ca2dff33e518c8412f140fdd2d AS build
 ARG PROJECT_NAME=distillery
 COPY / /src
 WORKDIR /src

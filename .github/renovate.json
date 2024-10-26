@@ -3,9 +3,13 @@
     "config:best-practices"
   ],
   "vulnerabilityAlerts": {
-    "labels": ["security"],
+    "labels": [
+      "security"
+    ],
     "automerge": true,
-    "assignees": ["@ekristen"]
+    "assignees": [
+      "@ekristen"
+    ]
   },
   "postUpdateOptions": [
     "gomodUpdateImportPaths",
@@ -27,11 +31,9 @@
       ],
       "groupName": "kubernetes",
       "groupSlug": "kubernetes",
-      "matchPackagePatterns": [
-        "^k8s.io/"
-      ],
       "matchPackageNames": [
-        "bitnami/kubectl"
+        "bitnami/kubectl",
+        "/^k8s.io//"
       ]
     },
     {
@@ -43,14 +45,16 @@
         "digest"
       ],
       "automerge": true,
-      "labels": ["patch"]
+      "labels": [
+        "patch"
+      ]
     },
     {
-      "matchPackagePatterns": [
-        "^golang.*"
-      ],
       "groupName": "golang",
-      "groupSlug": "golang"
+      "groupSlug": "golang",
+      "matchPackageNames": [
+        "/^golang.*/"
+      ]
     },
     {
       "matchFileNames": [
@@ -63,17 +67,19 @@
       "automerge": true
     }
   ],
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "fileMatch": [
         ".*.go$"
       ],
       "matchStrings": [
-        "\"(?<currentValue>.*)\" \/\/ renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s"
+        "\"(?<currentValue>.*)\" // renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)( versioning=(?<versioning>.*?))?\\s"
       ],
       "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
     {
+      "customType": "regex",
       "fileMatch": [
         "^.github/workflows/.*"
       ],
