@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -565,18 +563,6 @@ func (p *Provider) verifySignature() error {
 }
 
 func (p *Provider) verifyGPGSignature() error {
-	keyID, err := ExtractKeyIDFromSignature(p.Signature.GetFilePath())
-	if err != nil {
-		return err
-	}
-
-	logrus.Trace("keyID: ", keyID)
-
-	key, err := DownloadGPGKey(fmt.Sprintf("%X", keyID))
-	if err != nil {
-		return err
-	}
-
 	var filePath string
 	if p.SignatureType == "checksum" {
 		filePath = p.Checksum.GetFilePath()
@@ -584,69 +570,14 @@ func (p *Provider) verifyGPGSignature() error {
 		filePath = p.Binary.GetFilePath()
 	}
 
-	if err := VerifyGPGSignature(key, p.Signature.GetFilePath(), filePath); err != nil {
+	publicKeyPath := p.Key.GetFilePath()
+	signaturePath := p.Signature.GetFilePath()
+
+	publicKeyContent, err := os.Open(publicKeyPath)
+	if err != nil {
 		return err
 	}
 
-	log.Info("signature verified")
-
-	return nil
-}
-
-// ExtractKeyIDFromSignature extracts the key ID from a GPG signature file.
-func ExtractKeyIDFromSignature(signaturePath string) (uint64, error) {
-	signatureContent, err := os.ReadFile(signaturePath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read signature: %w", err)
-	}
-
-	// Parse the armored signature
-	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse signature: %w", err)
-	}
-
-	ids, ok := signature.GetSignatureKeyIDs()
-	if !ok {
-		return 0, errors.New("signature does not contain a key ID")
-	}
-
-	// Extract and return the key ID
-	return ids[0], nil
-}
-
-// DownloadGPGKey downloads a GPG key from the Ubuntu key server.
-func DownloadGPGKey(keyID string) (string, error) {
-	url := fmt.Sprintf("https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x%s", keyID)
-
-	// Make the HTTP request
-	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to download key: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	// Check if the request was successful
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to download key: server returned status %s", resp.Status)
-	}
-
-	// Copy the response body to the output file
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to save key to file: %w", err)
-	}
-
-	return string(data), nil
-}
-
-// VerifyGPGSignature verifies the GPG signature of a file using the provided public key.
-func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
 	signatureContent, err := os.ReadFile(signaturePath)
 	if err != nil {
 		return fmt.Errorf("failed to read signature file: %w", err)
@@ -657,7 +588,7 @@ func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
 		return fmt.Errorf("failed to read file to be verified: %w", err)
 	}
 
-	keyObj, err := crypto.NewKeyFromArmoredReader(strings.NewReader(publicKey))
+	keyObj, err := crypto.NewKeyFromArmoredReader(publicKeyContent)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key: %w", err)
 	}
@@ -677,6 +608,8 @@ func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
 	if err != nil {
 		return fmt.Errorf("signature verification failed: %w", err)
 	}
+
+	log.Info("signature verified")
 
 	return nil
 }
