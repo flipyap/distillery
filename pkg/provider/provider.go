@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -401,108 +402,6 @@ func (p *Provider) discoverSignature(version string) error {
 	return nil
 }
 
-func (p *Provider) discoverKey(version string) error {
-	logger := logrus.WithField("discover", "key")
-
-	fileScoring := map[asset.Type][]string{}
-	fileScored := map[asset.Type][]score.Sorted{}
-
-	logger.Tracef("discover: starting - %d", len(p.Assets))
-
-	for _, a := range p.Assets {
-		if _, ok := fileScoring[a.GetType()]; !ok {
-			fileScoring[a.GetType()] = []string{}
-		}
-		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
-	}
-
-	for k, v := range fileScoring {
-		logger.Tracef("discover: type: %d, files: %d", k, len(v))
-	}
-
-	var names []string
-	if p.SignatureType == "checksum" {
-		names = append(names, p.Checksum.GetName())
-
-		for _, ext := range []string{"pem", "key", "pub"} {
-			names = append(names, fmt.Sprintf("%s.%s", p.Checksum.GetName(), ext))
-		}
-	} else if p.SignatureType == "file" {
-		names = append(names, p.Binary.GetName())
-
-		for _, ext := range []string{"pem", "key", "pub"} {
-			names = append(names, fmt.Sprintf("%s.%s", p.Binary.GetName(), ext))
-		}
-	}
-
-	// Note: second pass we want to look for everything else, using binary results to help score the remaining assets
-	// This is for the checksum, signature and key files
-	for k, v := range fileScoring {
-		if k != asset.Key {
-			continue
-		}
-
-		detectedOS := p.OSConfig.GetOS()
-		arch := p.OSConfig.GetArchitectures()
-		ext := []string{"pem", "key", "pub"}
-
-		if _, ok := fileScored[k]; !ok {
-			fileScored[k] = []score.Sorted{}
-		}
-
-		logger.Tracef("preferred names: %v", names)
-
-		fileScored[k] = score.Score(v, &score.Options{
-			OS:          detectedOS,
-			Arch:        arch,
-			Extensions:  ext,
-			Names:       names,
-			Versions:    []string{version},
-			InvalidOS:   []string{},
-			InvalidArch: []string{},
-		})
-
-		if len(fileScored[k]) > 0 {
-			for _, vv := range fileScored[k] {
-				logger.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
-			}
-		}
-	}
-
-	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
-	for _, t := range []asset.Type{asset.Key} {
-		if len(fileScored[t]) > 0 {
-			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
-
-			topScored := fileScored[t][0]
-			if topScored.Value < 40 {
-				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
-				continue
-			}
-			for _, a := range p.Assets {
-				if a.GetParentType() != asset.Binary &&
-					a.GetParentType() != asset.Archive &&
-					a.GetParentType() != asset.Unknown &&
-					a.GetParentType() != asset.Checksum {
-					logger.Tracef("skipping key file, not a valid parent type: %s/%s", a.GetParentType(), a.GetName())
-					continue
-				}
-
-				if topScored.Key == a.GetName() {
-					p.Key = a
-					break
-				}
-			}
-		}
-
-		if p.Key != nil {
-			break
-		}
-	}
-
-	return nil
-}
-
 func (p *Provider) discoverMatch() error {
 	logger := logrus.WithField("discover", "match")
 
@@ -567,6 +466,10 @@ func (p *Provider) discoverMatch() error {
 		}
 
 		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		if !strings.HasSuffix(a.GetName(), ".asc") {
 			continue
 		}
 
@@ -775,10 +678,22 @@ func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
 	return nil
 }
 
+// TODO: refactor and clean up for the different signature verification methods
 func (p *Provider) verifyCosignSignature() error {
+	var bundle *cosign.Bundle
 	if p.Key == nil {
-		log.Warn("skipping signature verification (no key)")
-		return nil
+		sigData, err := os.ReadFile(p.Signature.GetFilePath())
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(sigData, &bundle); err != nil {
+			log.WithError(err).Trace("unable to parse json for bundle signature")
+		}
+
+		if bundle == nil {
+			log.Warn("skipping signature verification (no key)")
+			return nil
+		}
 	}
 
 	logrus.Trace("verifying signature")
@@ -799,11 +714,22 @@ func (p *Provider) verifyCosignSignature() error {
 		}
 	}
 
-	logrus.Trace("key file name: ", p.Key.GetName())
+	var sigData []byte
+	var publicKeyContentEncoded []byte
+	if p.Key != nil {
+		logrus.Trace("key file name: ", p.Key.GetName())
+		publicKeyContentEncoded, err = os.ReadFile(p.Key.GetFilePath())
+		if err != nil {
+			return err
+		}
 
-	publicKeyContentEncoded, err := os.ReadFile(p.Key.GetFilePath())
-	if err != nil {
-		return err
+		sigData, err = os.ReadFile(p.Signature.GetFilePath())
+		if err != nil {
+			return err
+		}
+	} else if bundle != nil {
+		publicKeyContentEncoded = []byte(bundle.Certificate)
+		sigData = []byte(bundle.Signature)
 	}
 
 	publicKeyContent, err := base64.StdEncoding.DecodeString(string(publicKeyContentEncoded))
@@ -821,11 +747,6 @@ func (p *Provider) verifyCosignSignature() error {
 	}
 
 	logrus.Trace("signature file name: ", p.Signature.GetName())
-
-	sigData, err := os.ReadFile(p.Signature.GetFilePath())
-	if err != nil {
-		return err
-	}
 
 	dataHash := cosign.HashData(fileContent)
 
