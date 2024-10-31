@@ -86,7 +86,7 @@ func (s *Kubernetes) Run(ctx context.Context) error {
 	}
 
 	// this is from the Provider struct
-	if err := s.Discover([]string{s.Repo}); err != nil {
+	if err := s.Discover([]string{s.Repo}, s.Version); err != nil {
 		return err
 	}
 

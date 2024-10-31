@@ -88,7 +88,8 @@ func New(name, displayName, osName, osArch, version string) *Asset {
 		Files:       make([]*File, 0),
 	}
 
-	a.Classify()
+	a.Type = a.Classify(name)
+	a.ParentType = a.Classify(strings.ReplaceAll(name, filepath.Ext(name), ""))
 
 	return a
 }
@@ -100,9 +101,11 @@ type File struct {
 }
 
 type Asset struct {
-	Name        string
-	DisplayName string
-	Type        Type
+	Name         string
+	DisplayName  string
+	Type         Type
+	ParentType   Type
+	ChecksumType string
 
 	OS      string
 	Arch    string
@@ -131,6 +134,24 @@ func (a *Asset) GetDisplayName() string {
 func (a *Asset) GetType() Type {
 	return a.Type
 }
+func (a *Asset) GetParentType() Type {
+	return a.ParentType
+}
+func (a *Asset) GetChecksumType() string {
+	name := strings.ToLower(a.Name)
+	if strings.HasSuffix(name, ".sha512") || strings.HasSuffix(name, ".sha256") || strings.HasSuffix(name, ".md5") || strings.HasSuffix(name, ".sha1") {
+		return "single"
+	}
+	if strings.Contains(name, "checksums") || strings.Contains(name, "checksum") {
+		return "multi"
+	}
+	if strings.Contains(name, "sha") && strings.Contains(name, "sums") {
+		return "multi"
+	} else if strings.Contains(name, "sums") {
+		return "multi"
+	}
+	return "none"
+}
 
 func (a *Asset) GetAsset() *Asset {
 	return a
@@ -152,55 +173,61 @@ func (a *Asset) GetFilePath() string {
 }
 
 // Classify determines the type of asset based on the file extension
-func (a *Asset) Classify() { //nolint:gocyclo
-	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
+func (a *Asset) Classify(name string) Type { //nolint:gocyclo
+	aType := Unknown
+
+	if ext := strings.TrimPrefix(filepath.Ext(name), "."); ext != "" {
 		switch filetype.GetType(ext) {
 		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType:
-			a.Type = Installer
+			aType = Installer
 		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType:
-			a.Type = Archive
+			aType = Archive
 		case matchers.TypeExe:
-			a.Type = Binary
+			aType = Binary
 		case sigType, ascType:
-			a.Type = Signature
+			aType = Signature
 		case pemType, pubType:
-			a.Type = Key
+			aType = Key
 		case sbomJSONType, bomJSONType, sbomType, bomType:
-			a.Type = SBOM
+			aType = SBOM
 		case jsonType:
-			a.Type = Data
+			aType = Data
 
-			if strings.Contains(a.Name, ".sbom") || strings.Contains(a.Name, ".bom") {
-				a.Type = SBOM
+			if strings.Contains(name, ".sbom") || strings.Contains(name, ".bom") {
+				aType = SBOM
 			}
 		default:
-			a.Type = Unknown
+			aType = Unknown
 		}
 	}
 
-	if a.Type == Unknown {
-		logrus.Tracef("classifying asset based on name: %s", a.Name)
-		name := strings.ToLower(a.Name)
-		if strings.Contains(name, ".sha256") || strings.Contains(name, ".md5") {
-			a.Type = Checksum
+	if aType == Unknown {
+		logrus.Tracef("classifying asset based on name: %s", name)
+		name = strings.ToLower(name)
+		if strings.HasSuffix(name, ".sha256") || strings.HasSuffix(name, ".md5") || strings.HasSuffix(name, ".sha1") {
+			aType = Checksum
 		}
 		if strings.Contains(name, "checksums") {
-			a.Type = Checksum
+			aType = Checksum
 		}
-		if strings.Contains(a.Name, "SHA") && strings.Contains(a.Name, "SUMS") {
-			a.Type = Checksum
-		} else if strings.Contains(a.Name, "SUMS") {
-			a.Type = Checksum
-		}
-
-		if strings.Contains(a.Name, "-pivkey-") {
-			a.Type = Key
-		} else if strings.Contains(a.Name, "pkcs") && strings.Contains(a.Name, "key") {
-			a.Type = Key
+		if strings.Contains(name, "sha") && strings.Contains(name, "sums") {
+			aType = Checksum
+		} else if strings.Contains(name, "sums") {
+			aType = Checksum
 		}
 	}
 
-	logrus.Tracef("classified: %s (%d)", a.Name, a.Type)
+	if aType == Unknown {
+		if strings.Contains(name, "-pivkey-") {
+			aType = Key
+		} else if strings.Contains(name, "pkcs") && strings.Contains(name, "key") {
+			aType = Key
+		}
+	}
+
+	logrus.Tracef("classified: %s (%d)", name, aType)
+
+	return aType
 }
 
 func (a *Asset) copyFile(srcFile, dstFile string) error {
