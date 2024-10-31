@@ -25,14 +25,14 @@ type GPGAsset struct {
 }
 
 func (a *GPGAsset) ID() string {
-	return fmt.Sprintf("%s-%s", a.GetType(), a.KeyID)
+	return fmt.Sprintf("%s-%d", a.GetType(), a.KeyID)
 }
 
 func (a *GPGAsset) Path() string {
 	return filepath.Join("gpg", strconv.FormatUint(a.KeyID, 10))
 }
 
-func (a *GPGAsset) Download(_ context.Context) error {
+func (a *GPGAsset) Download(ctx context.Context) error {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
 		return err
@@ -61,14 +61,18 @@ func (a *GPGAsset) Download(_ context.Context) error {
 		return nil
 	}
 
-	logrus.Debugf("downloading asset: %s", a.KeyID)
+	logrus.Debugf("downloading asset: %d", a.KeyID)
 
 	url := fmt.Sprintf("https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x%s", fmt.Sprintf("%X", a.KeyID))
 
-	// Make the HTTP request
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to download key: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
 

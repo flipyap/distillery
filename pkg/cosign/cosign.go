@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"math/big"
 )
 
 func ParsePublicKey(pemEncodedPubKey []byte) (*ecdsa.PublicKey, error) {
@@ -63,17 +62,4 @@ func VerifySignature(pubKey *ecdsa.PublicKey, hash, signature []byte) (bool, err
 	valid := ecdsa.VerifyASN1(pubKey, hash, sig)
 
 	return valid, nil
-}
-
-// decodeSignature decodes a base64 encoded signature into r and s values.
-func decodeSignature(signature []byte) (*big.Int, *big.Int, error) { //nolint:gocritic
-	sig, err := base64.StdEncoding.DecodeString(string(signature))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	r := new(big.Int).SetBytes(sig[:len(sig)/2])
-	s := new(big.Int).SetBytes(sig[len(sig)/2:])
-
-	return r, s, nil
 }

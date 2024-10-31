@@ -69,7 +69,7 @@ func TestSourceDiscover(t *testing.T) {
 				"SHA512SUMS",
 				"SHA512SUMS.sig",
 			},
-			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
+			matrix: []testSourceDiscoverMatrix{
 				{
 					os:      "darwin",
 					arch:    "amd64",
@@ -240,7 +240,7 @@ func TestSourceDiscover(t *testing.T) {
 				"cosign_checksums.txt-keyless.sig",
 				"release-cosign.pub",
 			},
-			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
+			matrix: []testSourceDiscoverMatrix{
 				{
 					os:      "darwin",
 					arch:    "amd64",
@@ -543,7 +543,6 @@ func TestSourceDiscover(t *testing.T) {
 						t.Error("expected key and missing")
 					}
 				}
-
 			})
 		}
 	}

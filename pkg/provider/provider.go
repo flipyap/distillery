@@ -28,6 +28,11 @@ import (
 
 const (
 	VersionLatest = "latest"
+	ChecksumType  = "checksum"
+
+	SignatureTypeNone     = "none"
+	SignatureTypeFile     = "file"
+	SignatureTypeChecksum = "checksum"
 )
 
 type Options struct {
@@ -86,7 +91,7 @@ func (p *Provider) CommonRun(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) discoverBinary(names []string, version string) error {
+func (p *Provider) discoverBinary(names []string, version string) error { //nolint:gocyclo
 	logger := logrus.WithField("discover", "binary")
 	logger.Tracef("names: %v", names)
 
@@ -212,13 +217,9 @@ func (p *Provider) discoverChecksum() error {
 			continue
 		}
 
-		detectedOS := p.OSConfig.GetOS()
-		arch := p.OSConfig.GetArchitectures()
-		ext := p.OSConfig.GetExtensions()
-
-		ext = []string{"sha256", "md5", "sha1", "txt"}
-		detectedOS = []string{}
-		arch = []string{}
+		ext := []string{"sha256", "md5", "sha1", "txt"}
+		var detectedOS []string
+		var arch []string
 
 		if _, ok := fileScored[k]; !ok {
 			fileScored[k] = []score.Sorted{}
@@ -282,20 +283,20 @@ func (p *Provider) determineChecksumSigTypes() error {
 		p.ChecksumType = p.Checksum.GetChecksumType()
 	}
 
-	p.SignatureType = "none"
+	p.SignatureType = SignatureTypeNone
 	for _, a := range p.Assets {
 		if a.GetType() != asset.Signature {
 			continue
 		}
 
-		if p.SignatureType == "file" {
+		if p.SignatureType == SignatureTypeFile {
 			break
 		}
 
 		if a.GetParentType() == asset.Binary || a.GetParentType() == asset.Archive || a.GetParentType() == asset.Unknown {
-			p.SignatureType = "file"
+			p.SignatureType = SignatureTypeFile
 		} else if a.GetParentType() == asset.Checksum {
-			p.SignatureType = "checksum"
+			p.SignatureType = SignatureTypeChecksum
 		}
 	}
 
@@ -305,7 +306,7 @@ func (p *Provider) determineChecksumSigTypes() error {
 	return nil
 }
 
-func (p *Provider) discoverSignature(version string) error {
+func (p *Provider) discoverSignature(version string) error { //nolint:gocyclo
 	logger := logrus.WithField("discover", "signature")
 
 	fileScoring := map[asset.Type][]string{}
@@ -325,12 +326,12 @@ func (p *Provider) discoverSignature(version string) error {
 	}
 
 	var names []string
-	if p.SignatureType == "checksum" {
+	if p.SignatureType == SignatureTypeChecksum {
 		names = append(names, p.Checksum.GetName())
 		for _, ext := range []string{"sig", "asc"} {
 			names = append(names, fmt.Sprintf("%s.%s", p.Checksum.GetName(), ext))
 		}
-	} else if p.SignatureType == "file" {
+	} else if p.SignatureType == SignatureTypeFile {
 		names = append(names, p.Binary.GetName())
 		for _, ext := range []string{"sig", "asc"} {
 			names = append(names, fmt.Sprintf("%s.%s", p.Binary.GetName(), ext))
@@ -344,13 +345,9 @@ func (p *Provider) discoverSignature(version string) error {
 			continue
 		}
 
-		detectedOS := p.OSConfig.GetOS()
-		arch := p.OSConfig.GetArchitectures()
-		ext := p.OSConfig.GetExtensions()
-
-		ext = []string{"sig", "asc", "sig.asc", "gpg", "keyless.sig"}
-		detectedOS = []string{}
-		arch = []string{}
+		ext := []string{"sig", "asc", "sig.asc", "gpg", "keyless.sig"}
+		var detectedOS []string
+		var arch []string
 
 		if _, ok := fileScored[k]; !ok {
 			fileScored[k] = []score.Sorted{}
@@ -402,7 +399,8 @@ func (p *Provider) discoverSignature(version string) error {
 	return nil
 }
 
-func (p *Provider) discoverMatch() error {
+// TODO: refactor into smaller functions for testing
+func (p *Provider) discoverMatch() error { //nolint:gocyclo
 	logger := logrus.WithField("discover", "match")
 
 	// Match keys to signatures.
@@ -491,7 +489,7 @@ func (p *Provider) discoverMatch() error {
 }
 
 // Discover will attempt to discover and categorize the assets provided
-func (p *Provider) Discover(names []string, version string) error { //nolint:funlen,gocyclo
+func (p *Provider) Discover(names []string, version string) error {
 	if err := p.discoverMatch(); err != nil {
 		return err
 	}
@@ -622,9 +620,14 @@ func DownloadGPGKey(keyID string) (string, error) {
 	url := fmt.Sprintf("https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x%s", keyID)
 
 	// Make the HTTP request
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to download key: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -679,7 +682,7 @@ func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
 }
 
 // TODO: refactor and clean up for the different signature verification methods
-func (p *Provider) verifyCosignSignature() error {
+func (p *Provider) verifyCosignSignature() error { //nolint:gocyclo
 	var bundle *cosign.Bundle
 	if p.Key == nil {
 		sigData, err := os.ReadFile(p.Signature.GetFilePath())

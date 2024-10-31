@@ -38,7 +38,7 @@ func (o *Options) GetAllStrings() []string {
 	return allStrings
 }
 
-func Score(names []string, opts *Options) []Sorted {
+func Score(names []string, opts *Options) []Sorted { //nolint:gocyclo
 	logger := logrus.WithField("function", "score")
 	logger.Tracef("names: %v", names)
 
@@ -113,14 +113,9 @@ func Score(names []string, opts *Options) []Sorted {
 }
 
 func removeExtension(filename string) string {
-
 	for {
 		newFilename := filename
 		newExt := filepath.Ext(newFilename)
-
-		//for _, ext := range knownExtensions {
-		//	newFilename = strings.TrimSuffix(newFilename, "."+ext)
-		//}
 
 		newFilename = strings.TrimSuffix(newFilename, newExt)
 

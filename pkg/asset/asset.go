@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"io"
 	"math"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/matchers"
@@ -75,6 +75,10 @@ const (
 	Key
 	SBOM
 	Data
+
+	ChecksumTypeNone  = "none"
+	ChecksumTypeFile  = "single"
+	ChecksumTypeMulti = "multi"
 )
 
 // processorFunc is a function that processes a reader
@@ -149,18 +153,23 @@ func (a *Asset) GetParentType() Type {
 }
 func (a *Asset) GetChecksumType() string {
 	name := strings.ToLower(a.Name)
-	if strings.HasSuffix(name, ".sha512") || strings.HasSuffix(name, ".sha256") || strings.HasSuffix(name, ".md5") || strings.HasSuffix(name, ".sha1") {
-		return "single"
+	if strings.HasSuffix(name, ".sha512") ||
+		strings.HasSuffix(name, ".sha256") ||
+		strings.HasSuffix(name, ".md5") ||
+		strings.HasSuffix(name, ".sha1") {
+		return ChecksumTypeFile
 	}
-	if strings.Contains(name, "checksums") || strings.Contains(name, "checksum") {
-		return "multi"
+	if strings.Contains(name, "checksums") ||
+		strings.Contains(name, "checksum") {
+		return ChecksumTypeMulti
 	}
-	if strings.Contains(name, "sha") && strings.Contains(name, "sums") {
-		return "multi"
+	if strings.Contains(name, "sha") &&
+		strings.Contains(name, "sums") {
+		return ChecksumTypeMulti
 	} else if strings.Contains(name, "sums") {
-		return "multi"
+		return ChecksumTypeMulti
 	}
-	return "none"
+	return ChecksumTypeNone
 }
 
 func (a *Asset) GetMatchedAsset() IAsset {
