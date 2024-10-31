@@ -2,6 +2,8 @@ package provider_test
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -18,6 +20,7 @@ func init() {
 
 type testSourceDiscoverTest struct {
 	name      string
+	version   string
 	filenames []string
 	matrix    []testSourceDiscoverMatrix
 }
@@ -25,20 +28,23 @@ type testSourceDiscoverTest struct {
 type testSourceDiscoverMatrix struct {
 	os       string
 	arch     string
+	version  string
 	expected testSourceDiscoverExpected
 }
 
 type testSourceDiscoverExpected struct {
 	error     string
 	binary    string
-	signature string
 	checksum  string
+	signature string
+	key       string
 }
 
 func TestSourceDiscover(t *testing.T) {
 	cases := []testSourceDiscoverTest{
 		{
-			name: "pulumi",
+			name:    "pulumi",
+			version: "3.133.0",
 			filenames: []string{
 				"B3SUMS",
 				"B3SUMS.sig",
@@ -63,10 +69,11 @@ func TestSourceDiscover(t *testing.T) {
 				"SHA512SUMS",
 				"SHA512SUMS.sig",
 			},
-			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
+			matrix: []testSourceDiscoverMatrix{
 				{
-					os:   "darwin",
-					arch: "amd64",
+					os:      "darwin",
+					arch:    "amd64",
+					version: "3.133.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "pulumi-v3.133.0-darwin-x64.tar.gz",
 						signature: "pulumi-v3.133.0-darwin-x64.tar.gz.sig",
@@ -74,8 +81,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "darwin",
-					arch: "arm64",
+					os:      "darwin",
+					arch:    "arm64",
+					version: "3.133.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "pulumi-v3.133.0-darwin-arm64.tar.gz",
 						signature: "pulumi-v3.133.0-darwin-arm64.tar.gz.sig",
@@ -83,8 +91,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "linux",
-					arch: "amd64",
+					os:      "linux",
+					arch:    "amd64",
+					version: "3.133.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "pulumi-v3.133.0-linux-x64.tar.gz",
 						signature: "pulumi-v3.133.0-linux-x64.tar.gz.sig",
@@ -92,8 +101,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "linux",
-					arch: "arm64",
+					os:      "linux",
+					arch:    "arm64",
+					version: "3.133.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "pulumi-v3.133.0-linux-arm64.tar.gz",
 						signature: "pulumi-v3.133.0-linux-arm64.tar.gz.sig",
@@ -101,8 +111,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "windows",
-					arch: "amd64",
+					os:      "windows",
+					arch:    "amd64",
+					version: "3.133.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "pulumi-v3.133.0-windows-x64.zip",
 						signature: "pulumi-v3.133.0-windows-x64.zip.sig",
@@ -112,7 +123,8 @@ func TestSourceDiscover(t *testing.T) {
 			},
 		},
 		{
-			name: "cosign",
+			name:    "cosign",
+			version: "2.4.0",
 			filenames: []string{
 				"cosign-2.4.0-1.aarch64.rpm",
 				"cosign-2.4.0-1.aarch64.rpm-keyless.pem",
@@ -228,56 +240,67 @@ func TestSourceDiscover(t *testing.T) {
 				"cosign_checksums.txt-keyless.sig",
 				"release-cosign.pub",
 			},
-			matrix: []testSourceDiscoverMatrix{ //nolint:dupl
+			matrix: []testSourceDiscoverMatrix{
 				{
-					os:   "darwin",
-					arch: "amd64",
+					os:      "darwin",
+					arch:    "amd64",
+					version: "2.4.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-darwin-amd64",
-						signature: "cosign-darwin-amd64.sig",
 						checksum:  "cosign_checksums.txt",
+						signature: "cosign-darwin-amd64.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
-					os:   "darwin",
-					arch: "arm64",
+					os:      "darwin",
+					arch:    "arm64",
+					version: "2.4.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-darwin-arm64",
-						signature: "cosign-darwin-arm64.sig",
 						checksum:  "cosign_checksums.txt",
+						signature: "cosign-darwin-arm64.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
-					os:   "linux",
-					arch: "amd64",
+					os:      "linux",
+					arch:    "amd64",
+					version: "2.4.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-linux-amd64",
-						signature: "cosign-linux-amd64.sig",
 						checksum:  "cosign_checksums.txt",
+						signature: "cosign-linux-amd64.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
-					os:   "linux",
-					arch: "arm64",
+					os:      "linux",
+					arch:    "arm64",
+					version: "2.4.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-linux-arm64",
-						signature: "cosign-linux-arm64.sig",
 						checksum:  "cosign_checksums.txt",
+						signature: "cosign-linux-arm64.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
-					os:   "windows",
-					arch: "amd64",
+					os:      "windows",
+					arch:    "amd64",
+					version: "2.4.0",
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-windows-amd64.exe",
-						signature: "cosign-windows-amd64.exe.sig",
 						checksum:  "cosign_checksums.txt",
+						signature: "cosign-windows-amd64.exe.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 			},
 		},
 		{
-			name: "acorn",
+			name:    "acorn",
+			version: "0.10.1",
 			filenames: []string{
 				"acorn-v0.10.1-linux-amd64.tar.gz",
 				"acorn-v0.10.1-linux-arm64.tar.gz",
@@ -287,22 +310,25 @@ func TestSourceDiscover(t *testing.T) {
 			},
 			matrix: []testSourceDiscoverMatrix{
 				{
-					os:   "darwin",
-					arch: "amd64",
+					os:      "darwin",
+					arch:    "amd64",
+					version: "0.10.1",
 					expected: testSourceDiscoverExpected{
 						binary: "acorn-v0.10.1-macOS-universal.tar.gz",
 					},
 				},
 				{
-					os:   "darwin",
-					arch: "arm64",
+					os:      "darwin",
+					arch:    "arm64",
+					version: "0.10.1",
 					expected: testSourceDiscoverExpected{
 						binary: "acorn-v0.10.1-macOS-universal.tar.gz",
 					},
 				},
 				{
-					os:   "linux",
-					arch: "amd64",
+					os:      "linux",
+					arch:    "amd64",
+					version: "0.10.1",
 					expected: testSourceDiscoverExpected{
 						binary:    "acorn-v0.10.1-linux-amd64.tar.gz",
 						signature: "",
@@ -310,8 +336,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "linux",
-					arch: "arm64",
+					os:      "linux",
+					arch:    "arm64",
+					version: "0.10.1",
 					expected: testSourceDiscoverExpected{
 						binary:    "acorn-v0.10.1-linux-arm64.tar.gz",
 						signature: "",
@@ -319,8 +346,9 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "windows",
-					arch: "amd64",
+					os:      "windows",
+					arch:    "amd64",
+					version: "0.10.1",
 					expected: testSourceDiscoverExpected{
 						binary:    "acorn-v0.10.1-windows-amd64.zip",
 						signature: "",
@@ -330,7 +358,8 @@ func TestSourceDiscover(t *testing.T) {
 			},
 		},
 		{
-			name: "nerdctl",
+			name:    "nerdctl",
+			version: "1.7.7",
 			filenames: []string{
 				"nerdctl-1.7.7-freebsd-amd64.tar.gz",
 				"nerdctl-1.7.7-go-mod-vendor.tar.gz",
@@ -348,8 +377,9 @@ func TestSourceDiscover(t *testing.T) {
 			},
 			matrix: []testSourceDiscoverMatrix{
 				{
-					os:   "darwin",
-					arch: "amd64",
+					os:      "darwin",
+					arch:    "amd64",
+					version: "1.7.7",
 					expected: testSourceDiscoverExpected{
 						error:     "no matching asset found, score too low",
 						binary:    "",
@@ -358,12 +388,92 @@ func TestSourceDiscover(t *testing.T) {
 					},
 				},
 				{
-					os:   "linux",
-					arch: "arm64",
+					os:      "linux",
+					arch:    "arm64",
+					version: "1.7.7",
 					expected: testSourceDiscoverExpected{
 						binary:    "nerdctl-1.7.7-linux-arm64.tar.gz",
 						signature: "SHA256SUMS.asc",
 						checksum:  "SHA256SUMS",
+					},
+				},
+			},
+		},
+		{
+			name:    "distillery",
+			version: "1.0.0-beta.5",
+			filenames: []string{
+				"checksums.txt",
+				"checksums.txt.pem",
+				"checksums.txt.sig",
+				"distillery-v1.0.0-beta.5-darwin-amd64.tar.gz",
+				"distillery-v1.0.0-beta.5-darwin-amd64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-darwin-amd64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-darwin-amd64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-darwin-arm64.tar.gz",
+				"distillery-v1.0.0-beta.5-darwin-arm64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-darwin-arm64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-darwin-arm64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-freebsd-amd64.tar.gz",
+				"distillery-v1.0.0-beta.5-freebsd-amd64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-freebsd-amd64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-freebsd-amd64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-freebsd-arm64.tar.gz",
+				"distillery-v1.0.0-beta.5-freebsd-arm64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-freebsd-arm64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-freebsd-arm64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-linux-amd64.tar.gz",
+				"distillery-v1.0.0-beta.5-linux-amd64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-linux-amd64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-linux-amd64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-linux-arm64.tar.gz",
+				"distillery-v1.0.0-beta.5-linux-arm64.tar.gz.sbom.json",
+				"distillery-v1.0.0-beta.5-linux-arm64.tar.gz.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-linux-arm64.tar.gz.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-windows-amd64.zip",
+				"distillery-v1.0.0-beta.5-windows-amd64.zip.sbom.json",
+				"distillery-v1.0.0-beta.5-windows-amd64.zip.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-windows-amd64.zip.sbom.json.sig",
+				"distillery-v1.0.0-beta.5-windows-arm64.zip",
+				"distillery-v1.0.0-beta.5-windows-arm64.zip.sbom.json",
+				"distillery-v1.0.0-beta.5-windows-arm64.zip.sbom.json.pem",
+				"distillery-v1.0.0-beta.5-windows-arm64.zip.sbom.json.sig",
+			},
+			matrix: []testSourceDiscoverMatrix{
+				{
+					os:      "darwin",
+					arch:    "amd64",
+					version: "1.0.0-beta.5",
+					expected: testSourceDiscoverExpected{
+						binary:    "distillery-v1.0.0-beta.5-darwin-amd64.tar.gz",
+						checksum:  "checksums.txt",
+						signature: "checksums.txt.sig",
+						key:       "checksums.txt.pem",
+					},
+				},
+			},
+		},
+		{
+			name:    "gitlab-runner",
+			version: "16.11.4",
+			filenames: []string{
+				"release.sha256.asc",
+				"release.sha256",
+				"gitlab-runner-linux-amd64",
+				"gitlab-runner-linux-arm64",
+				"gitlab-runner-darwin-arm64",
+				"gitlab-runner-darwin-amd64",
+			},
+			matrix: []testSourceDiscoverMatrix{
+				{
+					os:      "darwin",
+					arch:    "amd64",
+					version: "16.11.4",
+					expected: testSourceDiscoverExpected{
+						binary:    "gitlab-runner-darwin-amd64",
+						checksum:  "release.sha256",
+						signature: "release.sha256.asc",
+						key:       "release.sha256.pub",
 					},
 				},
 			},
@@ -373,7 +483,7 @@ func TestSourceDiscover(t *testing.T) {
 	t.Parallel()
 	for _, tc := range cases {
 		for _, m := range tc.matrix {
-			t.Run(fmt.Sprintf("%s-%s-%s", tc.name, m.os, m.arch), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s-%s-%s-%s", tc.name, m.version, m.os, m.arch), func(t *testing.T) {
 				var assets []asset.IAsset
 				for _, filename := range tc.filenames {
 					newA := &asset.Asset{
@@ -381,8 +491,11 @@ func TestSourceDiscover(t *testing.T) {
 						DisplayName: filename,
 						OS:          m.os,
 						Arch:        m.arch,
+						Version:     m.version,
 					}
-					newA.Classify()
+					newA.Type = newA.Classify(newA.Name)
+					newA.ParentType = newA.Classify(strings.ReplaceAll(newA.Name, filepath.Ext(newA.Name), ""))
+
 					assets = append(assets, newA)
 				}
 
@@ -398,7 +511,7 @@ func TestSourceDiscover(t *testing.T) {
 					Assets: assets,
 				}
 
-				err := testSource.Discover([]string{tc.name})
+				err := testSource.Discover([]string{tc.name}, tc.version)
 				if m.expected.error != "" {
 					assert.EqualError(t, err, m.expected.error)
 					return
@@ -409,11 +522,26 @@ func TestSourceDiscover(t *testing.T) {
 				if m.expected.binary != "" {
 					assert.Equal(t, m.expected.binary, testSource.Binary.GetName(), "expected binary")
 				}
-				if m.expected.signature != "" {
-					assert.Equal(t, m.expected.signature, testSource.Signature.GetName(), "expected signature")
-				}
 				if m.expected.checksum != "" {
-					assert.Equal(t, m.expected.checksum, testSource.Checksum.GetName(), "expected checksum")
+					if testSource.Checksum != nil {
+						assert.Equal(t, m.expected.checksum, testSource.Checksum.GetName(), "expected checksum")
+					} else {
+						t.Error("expected checksum and missing")
+					}
+				}
+				if m.expected.signature != "" {
+					if testSource.Signature != nil {
+						assert.Equal(t, m.expected.signature, testSource.Signature.GetName(), "expected signature")
+					} else {
+						t.Error("expected signature and missing")
+					}
+				}
+				if m.expected.key != "" {
+					if testSource.Key != nil {
+						assert.Equal(t, m.expected.key, testSource.Key.GetName(), "expected key")
+					} else {
+						t.Error("expected key and missing")
+					}
 				}
 			})
 		}

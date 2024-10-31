@@ -6,6 +6,7 @@ type IAsset interface {
 	GetName() string
 	GetDisplayName() string
 	GetType() Type
+	GetParentType() Type
 	GetAsset() *Asset
 	GetFiles() []*File
 	GetTempPath() string
@@ -16,4 +17,8 @@ type IAsset interface {
 	Cleanup() error
 	ID() string
 	Path() string
+	GetChecksumType() string
+	GetMatchedAsset() IAsset
+	SetMatchedAsset(IAsset)
+	GetGPGKeyID() (uint64, error)
 }

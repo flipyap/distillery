@@ -7,8 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"fmt"
-	"math/big"
 )
 
 func ParsePublicKey(pemEncodedPubKey []byte) (*ecdsa.PublicKey, error) {
@@ -46,33 +44,22 @@ func ParsePublicKey(pemEncodedPubKey []byte) (*ecdsa.PublicKey, error) {
 	return ecdsaPub, nil
 }
 
-// VerifySignature verifies the signature of the data using the provided ECDSA public key.
-func VerifySignature(pubKey *ecdsa.PublicKey, data, signature []byte) (bool, error) {
-	hash := sha256.Sum256(data)
-	fmt.Printf("Data hash: %x\n", hash)
+func HashData(data []byte) []byte {
+	hasher := sha256.New()
+	hasher.Write(data)
+	return hasher.Sum(nil)
+}
 
-	r, s, err := decodeSignature(signature)
+// VerifySignature verifies the signature of the data using the provided ECDSA public key.
+func VerifySignature(pubKey *ecdsa.PublicKey, hash, signature []byte) (bool, error) {
+	// Decode the base64 encoded signature
+	sig, err := base64.StdEncoding.DecodeString(string(signature))
 	if err != nil {
 		return false, err
 	}
 
-	fmt.Printf("r: %s\n", r.String())
-	fmt.Printf("s: %s\n", s.String())
-
-	valid := ecdsa.Verify(pubKey, hash[:], r, s)
+	// Verify the signature using VerifyASN1
+	valid := ecdsa.VerifyASN1(pubKey, hash, sig)
 
 	return valid, nil
-}
-
-// decodeSignature decodes a base64 encoded signature into r and s values.
-func decodeSignature(signature []byte) (*big.Int, *big.Int, error) { //nolint:gocritic
-	sig, err := base64.StdEncoding.DecodeString(string(signature))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	r := new(big.Int).SetBytes(sig[:len(sig)/2])
-	s := new(big.Int).SetBytes(sig[len(sig)/2:])
-
-	return r, s, nil
 }

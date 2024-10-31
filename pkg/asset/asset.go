@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/matchers"
@@ -32,6 +33,8 @@ var (
 	apkType      = filetype.AddType("apk", "application/vnd.android.package-archive")
 	ascType      = filetype.AddType("asc", "text/plain")
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
+	certType     = filetype.AddType("cert", "application/x-x509-ca-cert")
+	crtType      = filetype.AddType("crt", "application/x-x509-ca-cert")
 	sigType      = filetype.AddType("sig", "text/plain")
 	sbomJSONType = filetype.AddType("sbom.json", "application/json")
 	bomJSONType  = filetype.AddType("bom.json", "application/json")
@@ -72,6 +75,10 @@ const (
 	Key
 	SBOM
 	Data
+
+	ChecksumTypeNone  = "none"
+	ChecksumTypeFile  = "single"
+	ChecksumTypeMulti = "multi"
 )
 
 // processorFunc is a function that processes a reader
@@ -88,7 +95,14 @@ func New(name, displayName, osName, osArch, version string) *Asset {
 		Files:       make([]*File, 0),
 	}
 
-	a.Classify()
+	a.Type = a.Classify(name)
+
+	if a.Type == Key || a.Type == Signature || a.Type == Checksum {
+		parentName := strings.ReplaceAll(name, filepath.Ext(name), "")
+		parentName = strings.TrimSuffix(parentName, "-keyless")
+
+		a.ParentType = a.Classify(parentName)
+	}
 
 	return a
 }
@@ -100,9 +114,12 @@ type File struct {
 }
 
 type Asset struct {
-	Name        string
-	DisplayName string
-	Type        Type
+	Name         string
+	DisplayName  string
+	Type         Type
+	ParentType   Type
+	ChecksumType string
+	MatchedAsset IAsset
 
 	OS      string
 	Arch    string
@@ -131,6 +148,36 @@ func (a *Asset) GetDisplayName() string {
 func (a *Asset) GetType() Type {
 	return a.Type
 }
+func (a *Asset) GetParentType() Type {
+	return a.ParentType
+}
+func (a *Asset) GetChecksumType() string {
+	name := strings.ToLower(a.Name)
+	if strings.HasSuffix(name, ".sha512") ||
+		strings.HasSuffix(name, ".sha256") ||
+		strings.HasSuffix(name, ".md5") ||
+		strings.HasSuffix(name, ".sha1") {
+		return ChecksumTypeFile
+	}
+	if strings.Contains(name, "checksums") ||
+		strings.Contains(name, "checksum") {
+		return ChecksumTypeMulti
+	}
+	if strings.Contains(name, "sha") &&
+		strings.Contains(name, "sums") {
+		return ChecksumTypeMulti
+	} else if strings.Contains(name, "sums") {
+		return ChecksumTypeMulti
+	}
+	return ChecksumTypeNone
+}
+
+func (a *Asset) GetMatchedAsset() IAsset {
+	return a.MatchedAsset
+}
+func (a *Asset) SetMatchedAsset(asset IAsset) {
+	a.MatchedAsset = asset
+}
 
 func (a *Asset) GetAsset() *Asset {
 	return a
@@ -152,55 +199,61 @@ func (a *Asset) GetFilePath() string {
 }
 
 // Classify determines the type of asset based on the file extension
-func (a *Asset) Classify() { //nolint:gocyclo
-	if ext := strings.TrimPrefix(filepath.Ext(a.Name), "."); ext != "" {
+func (a *Asset) Classify(name string) Type { //nolint:gocyclo
+	aType := Unknown
+
+	if ext := strings.TrimPrefix(filepath.Ext(name), "."); ext != "" {
 		switch filetype.GetType(ext) {
 		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType:
-			a.Type = Installer
+			aType = Installer
 		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType:
-			a.Type = Archive
+			aType = Archive
 		case matchers.TypeExe:
-			a.Type = Binary
+			aType = Binary
 		case sigType, ascType:
-			a.Type = Signature
-		case pemType, pubType:
-			a.Type = Key
+			aType = Signature
+		case pemType, pubType, certType, crtType:
+			aType = Key
 		case sbomJSONType, bomJSONType, sbomType, bomType:
-			a.Type = SBOM
+			aType = SBOM
 		case jsonType:
-			a.Type = Data
+			aType = Data
 
-			if strings.Contains(a.Name, ".sbom") || strings.Contains(a.Name, ".bom") {
-				a.Type = SBOM
+			if strings.Contains(name, ".sbom") || strings.Contains(name, ".bom") {
+				aType = SBOM
 			}
 		default:
-			a.Type = Unknown
+			aType = Unknown
 		}
 	}
 
-	if a.Type == Unknown {
-		logrus.Tracef("classifying asset based on name: %s", a.Name)
-		name := strings.ToLower(a.Name)
-		if strings.Contains(name, ".sha256") || strings.Contains(name, ".md5") {
-			a.Type = Checksum
+	if aType == Unknown {
+		logrus.Tracef("classifying asset based on name: %s", name)
+		name = strings.ToLower(name)
+		if strings.HasSuffix(name, ".sha256") || strings.HasSuffix(name, ".md5") || strings.HasSuffix(name, ".sha1") {
+			aType = Checksum
 		}
 		if strings.Contains(name, "checksums") {
-			a.Type = Checksum
+			aType = Checksum
 		}
-		if strings.Contains(a.Name, "SHA") && strings.Contains(a.Name, "SUMS") {
-			a.Type = Checksum
-		} else if strings.Contains(a.Name, "SUMS") {
-			a.Type = Checksum
-		}
-
-		if strings.Contains(a.Name, "-pivkey-") {
-			a.Type = Key
-		} else if strings.Contains(a.Name, "pkcs") && strings.Contains(a.Name, "key") {
-			a.Type = Key
+		if strings.Contains(name, "sha") && strings.Contains(name, "sums") {
+			aType = Checksum
+		} else if strings.Contains(name, "sums") {
+			aType = Checksum
 		}
 	}
 
-	logrus.Tracef("classified: %s (%d)", a.Name, a.Type)
+	if aType == Unknown {
+		if strings.Contains(name, "-pivkey-") {
+			aType = Key
+		} else if strings.Contains(name, "pkcs") && strings.Contains(name, "key") {
+			aType = Key
+		}
+	}
+
+	logrus.Tracef("classified: %s - %s (type: %d)", name, aType, aType)
+
+	return aType
 }
 
 func (a *Asset) copyFile(srcFile, dstFile string) error {
@@ -571,6 +624,30 @@ func (a *Asset) processXz(in io.Reader) (io.Reader, error) {
 func (a *Asset) processBz2(in io.Reader) (io.Reader, error) {
 	br := bzip2.NewReader(in)
 	return br, nil
+}
+
+func (a *Asset) GetGPGKeyID() (uint64, error) {
+	if a.Type != Signature {
+		return 0, fmt.Errorf("asset is not a signature: %s", a.GetName())
+	}
+
+	signatureContent, err := os.ReadFile(a.GetFilePath())
+	if err != nil {
+		return 0, fmt.Errorf("failed to read signature: %w", err)
+	}
+
+	// Parse the armored signature
+	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse signature: %w", err)
+	}
+
+	ids, ok := signature.GetSignatureKeyIDs()
+	if !ok {
+		return 0, errors.New("signature does not contain a key ID")
+	}
+
+	return ids[0], nil
 }
 
 func int64ToUint32(value int64) (uint32, error) {

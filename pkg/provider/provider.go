@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/sirupsen/logrus"
+
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/checksum"
@@ -23,6 +26,11 @@ import (
 
 const (
 	VersionLatest = "latest"
+	ChecksumType  = "checksum"
+
+	SignatureTypeNone     = "none"
+	SignatureTypeFile     = "file"
+	SignatureTypeChecksum = "checksum"
 )
 
 type Options struct {
@@ -40,6 +48,9 @@ type Provider struct {
 	Signature asset.IAsset
 	Checksum  asset.IAsset
 	Key       asset.IAsset
+
+	ChecksumType  string
+	SignatureType string
 }
 
 func (p *Provider) GetOS() string {
@@ -78,13 +89,14 @@ func (p *Provider) CommonRun(ctx context.Context) error {
 	return nil
 }
 
-// Discover will attempt to discover and categorize the assets provided
-// TODO(ek): split up and refactor this function as it's way too complex
-func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
+func (p *Provider) discoverBinary(names []string, version string) error { //nolint:gocyclo
+	logger := logrus.WithField("discover", "binary")
+	logger.Tracef("names: %v", names)
+
 	fileScoring := map[asset.Type][]string{}
 	fileScored := map[asset.Type][]score.Sorted{}
 
-	logrus.Tracef("discover: starting - %d", len(p.Assets))
+	logger.Tracef("discover: starting - %d", len(p.Assets))
 
 	for _, a := range p.Assets {
 		if _, ok := fileScoring[a.GetType()]; !ok {
@@ -94,7 +106,7 @@ func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
 	}
 
 	for k, v := range fileScoring {
-		logrus.Tracef("discover: type: %d, files: %d", k, len(v))
+		logger.Tracef("discover: type: %d, files: %d", k, len(v))
 	}
 
 	highEnoughScore := false
@@ -117,7 +129,8 @@ func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
 			OS:          detectedOS,
 			Arch:        arch,
 			Extensions:  ext,
-			Names:       names,
+			Terms:       names,
+			Versions:    []string{version},
 			InvalidOS:   p.OSConfig.InvalidOS(),
 			InvalidArch: p.OSConfig.InvalidArchitectures(),
 		})
@@ -127,17 +140,17 @@ func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
 				if vv.Value >= 40 {
 					highEnoughScore = true
 				}
-				logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
+				logger.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
 			}
 		}
 	}
 
 	if !highEnoughScore && !p.Options.Settings["no-score-check"].(bool) {
-		log.Error("no matching asset found, score too low")
+		logger.Error("no matching asset found, score too low")
 		for _, t := range []asset.Type{asset.Binary, asset.Unknown, asset.Archive} {
 			for _, v := range fileScored[t] {
 				if v.Value < 40 {
-					log.Errorf("closest matching: %p (%d) (threshold: 40) -- override with --no-score-check", v.Key, v.Value)
+					logger.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", v.Key, v.Value)
 					return errors.New("no matching asset found, score too low")
 				}
 			}
@@ -149,11 +162,11 @@ func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
 	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
 	for _, t := range []asset.Type{asset.Binary, asset.Archive, asset.Unknown} {
 		if len(fileScored[t]) > 0 {
-			logrus.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
+			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
 
 			topScored := fileScored[t][0]
 			if topScored.Value < 40 {
-				logrus.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
+				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
 				continue
 			}
 			for _, a := range p.Assets {
@@ -173,76 +186,326 @@ func (p *Provider) Discover(names []string) error { //nolint:funlen,gocyclo
 		return errors.New("no binary found")
 	}
 
+	return nil
+}
+
+func (p *Provider) discoverChecksum() error {
+	logger := logrus.WithField("discover", "checksum")
+
+	fileScoring := map[asset.Type][]string{}
+	fileScored := map[asset.Type][]score.Sorted{}
+
+	logger.Tracef("discover: starting - %d", len(p.Assets))
+
+	for _, a := range p.Assets {
+		if _, ok := fileScoring[a.GetType()]; !ok {
+			fileScoring[a.GetType()] = []string{}
+		}
+		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
+	}
+
+	for k, v := range fileScoring {
+		logger.Tracef("discover: type: %d, files: %d", k, len(v))
+	}
+
 	// Note: second pass we want to look for everything else, using binary results to help score the remaining assets
 	// THis is for the checksum, signature and key files
 	for k, v := range fileScoring {
-		if k == asset.Binary || k == asset.Unknown || k == asset.Archive {
+		if k != asset.Checksum {
 			continue
 		}
 
-		detectedOS := p.OSConfig.GetOS()
-		arch := p.OSConfig.GetArchitectures()
-		ext := p.OSConfig.GetExtensions()
-
-		if k == asset.Key {
-			ext = []string{"key", "pub", "pem"}
-			detectedOS = []string{}
-			arch = []string{}
-		} else if k == asset.Signature {
-			ext = []string{"sig", "asc"}
-			detectedOS = []string{}
-			arch = []string{}
-		} else if k == asset.Checksum {
-			ext = []string{"sha256", "md5", "sha1", "txt"}
-			detectedOS = []string{}
-			arch = []string{}
-		}
+		ext := []string{"sha256", "md5", "sha1", "txt"}
+		var detectedOS []string
+		var arch []string
 
 		if _, ok := fileScored[k]; !ok {
 			fileScored[k] = []score.Sorted{}
 		}
 
 		fileScored[k] = score.Score(v, &score.Options{
-			OS:          detectedOS,
-			Arch:        arch,
-			Extensions:  ext,
-			Names:       []string{strings.ReplaceAll(p.Binary.GetName(), filepath.Ext(p.Binary.GetName()), "")},
+			OS:         detectedOS,
+			Arch:       arch,
+			Extensions: ext,
+			WeightedTerms: map[string]int{
+				"checksums": 80,
+				"SHA512":    50,
+				"SHA256":    40,
+				"MD5":       30,
+				"SHA1":      20,
+				"SHA":       15,
+				"SUMS":      10,
+			},
 			InvalidOS:   p.OSConfig.InvalidOS(),
 			InvalidArch: p.OSConfig.InvalidArchitectures(),
 		})
 
 		if len(fileScored[k]) > 0 {
-			logrus.Debugf("file scoring sorted ! type: %d, scored: %v", k, fileScored[k][0])
+			for _, vv := range fileScored[k] {
+				logger.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
+			}
+		}
+	}
+
+	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
+	for _, t := range []asset.Type{asset.Checksum} {
+		if len(fileScored[t]) > 0 {
+			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
+
+			topScored := fileScored[t][0]
+			if topScored.Value < 40 {
+				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
+				continue
+			}
+			for _, a := range p.Assets {
+				if topScored.Key == a.GetName() {
+					p.Checksum = a
+					break
+				}
+			}
+		}
+
+		if p.Checksum != nil {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (p *Provider) determineChecksumSigTypes() error {
+	logger := logrus.WithField("discover", "check-sig-type")
+
+	p.ChecksumType = "none"
+	if p.Checksum != nil {
+		p.ChecksumType = p.Checksum.GetChecksumType()
+	}
+
+	p.SignatureType = SignatureTypeNone
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Signature {
+			continue
+		}
+
+		if p.SignatureType == SignatureTypeFile {
+			break
+		}
+
+		if a.GetParentType() == asset.Binary || a.GetParentType() == asset.Archive || a.GetParentType() == asset.Unknown {
+			p.SignatureType = SignatureTypeFile
+		} else if a.GetParentType() == asset.Checksum {
+			p.SignatureType = SignatureTypeChecksum
+		}
+	}
+
+	logger.Tracef("checksum type: %s", p.ChecksumType)
+	logger.Tracef("signature type: %s", p.SignatureType)
+
+	return nil
+}
+
+func (p *Provider) discoverSignature(version string) error { //nolint:gocyclo
+	logger := logrus.WithField("discover", "signature")
+
+	fileScoring := map[asset.Type][]string{}
+	fileScored := map[asset.Type][]score.Sorted{}
+
+	logger.Tracef("discover: starting - %d", len(p.Assets))
+
+	for _, a := range p.Assets {
+		if _, ok := fileScoring[a.GetType()]; !ok {
+			fileScoring[a.GetType()] = []string{}
+		}
+		fileScoring[a.GetType()] = append(fileScoring[a.GetType()], a.GetName())
+	}
+
+	for k, v := range fileScoring {
+		logger.Tracef("discover: type: %d, files: %d", k, len(v))
+	}
+
+	var names []string
+	if p.SignatureType == SignatureTypeChecksum {
+		names = append(names, p.Checksum.GetName())
+		for _, ext := range []string{"sig", "asc"} {
+			names = append(names, fmt.Sprintf("%s.%s", p.Checksum.GetName(), ext))
+		}
+	} else if p.SignatureType == SignatureTypeFile {
+		names = append(names, p.Binary.GetName())
+		for _, ext := range []string{"sig", "asc"} {
+			names = append(names, fmt.Sprintf("%s.%s", p.Binary.GetName(), ext))
+		}
+	}
+
+	// Note: second pass we want to look for everything else, using binary results to help score the remaining assets
+	// This is for the checksum, signature and key files
+	for k, v := range fileScoring {
+		if k != asset.Signature {
+			continue
+		}
+
+		ext := []string{"sig", "asc", "sig.asc", "gpg", "keyless.sig"}
+		var detectedOS []string
+		var arch []string
+
+		if _, ok := fileScored[k]; !ok {
+			fileScored[k] = []score.Sorted{}
+		}
+
+		logger.Tracef("names: %v", names)
+
+		fileScored[k] = score.Score(v, &score.Options{
+			OS:          detectedOS,
+			Arch:        arch,
+			Extensions:  ext,
+			Names:       names,
+			Versions:    []string{version},
+			InvalidOS:   p.OSConfig.InvalidOS(),
+			InvalidArch: p.OSConfig.InvalidArchitectures(),
+		})
+
+		if len(fileScored[k]) > 0 {
+			for _, vv := range fileScored[k] {
+				logger.Debugf("file scoring sorted ! type: %d, scored: %v", k, vv)
+			}
+		}
+	}
+
+	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
+	for _, t := range []asset.Type{asset.Signature} {
+		if len(fileScored[t]) > 0 {
+			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
+
+			topScored := fileScored[t][0]
+			if topScored.Value < 40 {
+				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
+				continue
+			}
+			for _, a := range p.Assets {
+				if topScored.Key == a.GetName() {
+					p.Signature = a
+					p.Key = a.GetMatchedAsset()
+					break
+				}
+			}
+		}
+
+		if p.Signature != nil {
+			break
+		}
+	}
+
+	return nil
+}
+
+// TODO: refactor into smaller functions for testing
+func (p *Provider) discoverMatch() error { //nolint:gocyclo
+	logger := logrus.WithField("discover", "match")
+
+	// Match keys to signatures.
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Signature {
+			continue
+		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		for _, aa := range p.Assets {
+			if aa.GetType() != asset.Key {
+				continue
+			}
+
+			childS := strings.TrimSuffix(aa.GetName(), filepath.Ext(aa.GetName()))
+			parentS := strings.TrimSuffix(a.GetName(), filepath.Ext(a.GetName()))
+
+			if strings.EqualFold(childS, parentS) {
+				logger.Tracef("matched key: %s to signature: %s", aa.GetName(), a.GetName())
+				a.SetMatchedAsset(aa)
+				aa.SetMatchedAsset(a)
+				break
+			}
+		}
+	}
+
+	// Match remaining keys to signatures, hopefully there's only a single key remaining
+	// TODO: what to do if there are multiple keys remaining? (Maybe support multiple matched???)
+	// Use Case: Keyless vs Keyed signing, cosign does both. The keyed file is used for multiple files.
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Key {
+			continue
+		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		logger.Tracef("unmatched key: %s", a.GetName())
+
+		for _, b := range p.Assets {
+			if b.GetType() != asset.Signature {
+				continue
+			}
+
+			if b.GetMatchedAsset() != nil {
+				continue
+			}
+
+			b.SetMatchedAsset(a)
+			logger.Tracef("matched key: %s to signature: %s", a.GetName(), b.GetName())
 		}
 	}
 
 	for _, a := range p.Assets {
-		for k, v := range fileScored {
-			vv := v[0]
-
-			if a.GetType() == asset.Checksum && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				p.Checksum = a
-			}
-			if a.GetType() == asset.Signature && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				p.Signature = a
-			}
-			if a.GetType() == asset.Key && a.GetType() == k && a.GetName() == vv.Key { //nolint:gocritic
-				p.Key = a
-			}
+		if a.GetType() != asset.Signature {
+			continue
 		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		if !strings.HasSuffix(a.GetName(), ".asc") {
+			continue
+		}
+
+		keyName := strings.ReplaceAll(a.GetName(), ".asc", ".pub")
+
+		gpgAsset := &GPGAsset{
+			Asset: asset.New(keyName, "", p.GetOS(), p.GetArch(), ""),
+		}
+
+		gpgAsset.SetMatchedAsset(a)
+		a.SetMatchedAsset(gpgAsset)
+
+		p.Assets = append(p.Assets, gpgAsset)
+
+		log.Info("gpg detected will fetch public key")
 	}
 
-	if p.Binary != nil {
-		logrus.Tracef("best binary: %s", p.Binary.GetName())
+	return nil
+}
+
+// Discover will attempt to discover and categorize the assets provided
+func (p *Provider) Discover(names []string, version string) error {
+	if err := p.discoverMatch(); err != nil {
+		return err
 	}
-	if p.Checksum != nil {
-		logrus.Tracef("best checksum: %s", p.Checksum.GetName())
+
+	if err := p.discoverBinary(names, version); err != nil {
+		return err
 	}
-	if p.Signature != nil {
-		logrus.Tracef("best signature: %s", p.Signature.GetName())
+
+	if err := p.discoverChecksum(); err != nil {
+		return err
 	}
-	if p.Key != nil {
-		logrus.Tracef("best key: %s", p.Key.GetName())
+
+	if err := p.determineChecksumSigTypes(); err != nil {
+		return err
+	}
+
+	if err := p.discoverSignature(version); err != nil {
+		return err
 	}
 
 	return nil
@@ -286,26 +549,132 @@ func (p *Provider) Verify() error {
 }
 
 func (p *Provider) verifySignature() error {
-	if true {
-		log.Debug("skipping signature verification")
+	if p.Signature == nil {
+		log.Warn("skipping signature verification (no signature)")
 		return nil
 	}
 
-	logrus.Info("verifying signature")
+	// TODO: better pgp detection
+	if strings.HasSuffix(p.Signature.GetName(), ".asc") {
+		return p.verifyGPGSignature()
+	}
 
-	cosignFileContent, err := os.ReadFile(p.Checksum.GetFilePath())
+	return p.verifyCosignSignature()
+}
+
+func (p *Provider) verifyGPGSignature() error {
+	var filePath string
+	if p.SignatureType == "checksum" {
+		filePath = p.Checksum.GetFilePath()
+	} else {
+		filePath = p.Binary.GetFilePath()
+	}
+
+	publicKeyPath := p.Key.GetFilePath()
+	signaturePath := p.Signature.GetFilePath()
+
+	publicKeyContent, err := os.Open(publicKeyPath)
 	if err != nil {
 		return err
 	}
 
-	publicKeyContentEncoded, err := os.ReadFile(p.Key.GetFilePath())
+	signatureContent, err := os.ReadFile(signaturePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read signature file: %w", err)
+	}
+
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file to be verified: %w", err)
+	}
+
+	keyObj, err := crypto.NewKeyFromArmoredReader(publicKeyContent)
+	if err != nil {
+		return fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	keyRing, err := crypto.NewKeyRing(keyObj)
+	if err != nil {
+		return fmt.Errorf("failed to create keyring: %w", err)
+	}
+
+	message := crypto.NewPlainMessage(fileContent)
+	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse signature: %w", err)
+	}
+
+	err = keyRing.VerifyDetached(message, signature, crypto.GetUnixTime())
+	if err != nil {
+		return fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	log.Info("signature verified")
+
+	return nil
+}
+
+// TODO: refactor and clean up for the different signature verification methods
+func (p *Provider) verifyCosignSignature() error { //nolint:gocyclo
+	var bundle *cosign.Bundle
+	if p.Key == nil {
+		sigData, err := os.ReadFile(p.Signature.GetFilePath())
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(sigData, &bundle); err != nil {
+			log.WithError(err).Trace("unable to parse json for bundle signature")
+		}
+
+		if bundle == nil {
+			log.Warn("skipping signature verification (no key)")
+			return nil
+		}
+	}
+
+	logrus.Trace("verifying signature")
+
+	var fileContent []byte
+	var err error
+	if p.SignatureType == "checksum" {
+		logrus.Trace("verifying checksum signature", p.Checksum.GetName())
+		fileContent, err = os.ReadFile(p.Checksum.GetFilePath())
+		if err != nil {
+			return err
+		}
+	} else {
+		logrus.Trace("verifying binary signature")
+		fileContent, err = os.ReadFile(p.Binary.GetFilePath())
+		if err != nil {
+			return err
+		}
+	}
+
+	var sigData []byte
+	var publicKeyContentEncoded []byte
+	if p.Key != nil {
+		logrus.Trace("key file name: ", p.Key.GetName())
+		publicKeyContentEncoded, err = os.ReadFile(p.Key.GetFilePath())
+		if err != nil {
+			return err
+		}
+
+		sigData, err = os.ReadFile(p.Signature.GetFilePath())
+		if err != nil {
+			return err
+		}
+	} else if bundle != nil {
+		publicKeyContentEncoded = []byte(bundle.Certificate)
+		sigData = []byte(bundle.Signature)
 	}
 
 	publicKeyContent, err := base64.StdEncoding.DecodeString(string(publicKeyContentEncoded))
 	if err != nil {
-		return err
+		if errors.Is(err, base64.CorruptInputError(0)) {
+			publicKeyContent = publicKeyContentEncoded
+		} else {
+			return err
+		}
 	}
 
 	pubKey, err := cosign.ParsePublicKey(publicKeyContent)
@@ -313,14 +682,11 @@ func (p *Provider) verifySignature() error {
 		return err
 	}
 
-	fmt.Printf("Public Key: %+v\n", pubKey)
+	logrus.Trace("signature file name: ", p.Signature.GetName())
 
-	sigData, err := os.ReadFile(p.Signature.GetFilePath())
-	if err != nil {
-		return err
-	}
+	dataHash := cosign.HashData(fileContent)
 
-	valid, err := cosign.VerifySignature(pubKey, cosignFileContent, sigData)
+	valid, err := cosign.VerifySignature(pubKey, dataHash, sigData)
 	if err != nil {
 		return err
 	}
@@ -328,6 +694,8 @@ func (p *Provider) verifySignature() error {
 	if !valid {
 		return errors.New("unable to validate signature")
 	}
+
+	log.Info("signature verified")
 
 	return nil
 }

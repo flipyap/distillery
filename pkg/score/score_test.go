@@ -11,6 +11,7 @@ import (
 
 func init() {
 	logrus.SetLevel(logrus.TraceLevel)
+	logrus.SetReportCaller(true)
 }
 
 func TestScore(t *testing.T) {
@@ -19,6 +20,7 @@ func TestScore(t *testing.T) {
 	cases := []struct {
 		name     string
 		names    []string
+		terms    []string
 		opts     *Options
 		expected []Sorted
 	}{
@@ -33,7 +35,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.deb",
-					Value: 70,
+					Value: 69,
 				},
 			},
 		},
@@ -58,7 +60,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64",
-					Value: 70,
+					Value: 69,
 				},
 			},
 		},
@@ -73,12 +75,12 @@ func TestScore(t *testing.T) {
 				Extensions: []string{
 					types.Unknown.Extension,
 				},
-				Names: []string{"something"},
+				Terms: []string{"something"},
 			},
 			expected: []Sorted{
 				{
 					Key:   "something-linux",
-					Value: 10,
+					Value: 7,
 				},
 			},
 		},
@@ -91,12 +93,12 @@ func TestScore(t *testing.T) {
 				OS:         []string{"linux"},
 				Arch:       []string{"amd64"},
 				Extensions: []string{"sig"},
-				Names:      []string{"dist"},
+				Terms:      []string{"dist"},
 			},
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.sig",
-					Value: 100,
+					Value: 106,
 				},
 			},
 		},
@@ -113,7 +115,7 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64.pem",
-					Value: 110,
+					Value: 109,
 				},
 			},
 		},
@@ -128,22 +130,22 @@ func TestScore(t *testing.T) {
 				OS:         []string{},
 				Arch:       []string{},
 				Extensions: []string{"txt"},
-				Names: []string{
+				Terms: []string{
 					"checksums",
 				},
 			},
 			expected: []Sorted{
 				{
 					Key:   "checksums.txt",
-					Value: 30,
+					Value: 40,
 				},
 				{
 					Key:   "SHA256SUMS",
-					Value: 0,
+					Value: 10,
 				},
 				{
 					Key:   "SHASUMS",
-					Value: 0,
+					Value: 10,
 				},
 			},
 		},
@@ -158,7 +160,7 @@ func TestScore(t *testing.T) {
 				OS:         []string{"windows"},
 				Arch:       []string{"arm64"},
 				Extensions: []string{"exe"},
-				Names: []string{
+				Terms: []string{
 					"dist",
 				},
 				InvalidOS:   []string{"linux", "darwin"},
@@ -167,15 +169,15 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-windows-arm64.exe",
-					Value: 100, // os, arch, ext, name match
+					Value: 106, // os, arch, ext, name match
 				},
 				{
 					Key:   "dist-linux-amd64",
-					Value: -60, // invalid os and arch
+					Value: -68, // invalid os and arch
 				},
 				{
 					Key:   "dist-darwin-amd64",
-					Value: -60, // invalid os and arch
+					Value: -68, // invalid os and arch
 				},
 			},
 		},
@@ -189,7 +191,7 @@ func TestScore(t *testing.T) {
 				OS:         []string{"linux"},
 				Arch:       []string{"amd64"},
 				Extensions: []string{""},
-				Names: []string{
+				Terms: []string{
 					"dist",
 				},
 				InvalidOS:         []string{"windows"},
@@ -198,11 +200,49 @@ func TestScore(t *testing.T) {
 			expected: []Sorted{
 				{
 					Key:   "dist-linux-amd64",
-					Value: 80, // os, arch, name match
+					Value: 86, // os, arch, name match
 				},
 				{
 					Key:   "dist-windows-amd64.exe",
-					Value: -20, // invalid extension and os
+					Value: -21, // invalid extension and os
+				},
+			},
+		},
+		{
+			name: "better-match",
+			names: []string{
+				"nerdctl-1.7.7-linux-arm64.tar.gz",
+				"nerdctl-1.7.7-linux-amd64.tar.gz",
+				"nerdctl-full-1.7.7-linux-amd64.tar.gz",
+				"nerdctl-full-1.7.7-linux-arm64.tar.gz",
+			},
+			opts: &Options{
+				OS:         []string{"linux"},
+				Arch:       []string{"amd64"},
+				Versions:   []string{"1.7.7"},
+				Extensions: []string{""},
+				Terms: []string{
+					"nerdctl",
+				},
+				InvalidOS:         []string{"windows"},
+				InvalidExtensions: []string{"exe"},
+			},
+			expected: []Sorted{
+				{
+					Key:   "nerdctl-1.7.7-linux-amd64.tar.gz",
+					Value: 77,
+				},
+				{
+					Key:   "nerdctl-full-1.7.7-linux-amd64.tar.gz",
+					Value: 72,
+				},
+				{
+					Key:   "nerdctl-1.7.7-linux-arm64.tar.gz",
+					Value: 47,
+				},
+				{
+					Key:   "nerdctl-full-1.7.7-linux-arm64.tar.gz",
+					Value: 42,
 				},
 			},
 		},
