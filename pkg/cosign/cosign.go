@@ -45,12 +45,14 @@ func ParsePublicKey(pemEncodedPubKey []byte) (*ecdsa.PublicKey, error) {
 	return ecdsaPub, nil
 }
 
-// VerifySignature verifies the signature of the data using the provided ECDSA public key.
-func VerifySignature(pubKey *ecdsa.PublicKey, data, signature []byte) (bool, error) {
+func HashData(data []byte) []byte {
 	hasher := sha256.New()
 	hasher.Write(data)
-	hash := hasher.Sum(nil)
+	return hasher.Sum(nil)
+}
 
+// VerifySignature verifies the signature of the data using the provided ECDSA public key.
+func VerifySignature(pubKey *ecdsa.PublicKey, hash, signature []byte) (bool, error) {
 	// Decode the base64 encoded signature
 	sig, err := base64.StdEncoding.DecodeString(string(signature))
 	if err != nil {

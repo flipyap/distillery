@@ -18,4 +18,6 @@ type IAsset interface {
 	ID() string
 	Path() string
 	GetChecksumType() string
+	GetMatchedAsset() IAsset
+	SetMatchedAsset(IAsset)
 }

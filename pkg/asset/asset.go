@@ -89,7 +89,13 @@ func New(name, displayName, osName, osArch, version string) *Asset {
 	}
 
 	a.Type = a.Classify(name)
-	a.ParentType = a.Classify(strings.ReplaceAll(name, filepath.Ext(name), ""))
+
+	if a.Type == Key || a.Type == Signature || a.Type == Checksum {
+		parentName := strings.ReplaceAll(name, filepath.Ext(name), "")
+		parentName = strings.TrimSuffix(parentName, "-keyless")
+
+		a.ParentType = a.Classify(parentName)
+	}
 
 	return a
 }
@@ -106,6 +112,7 @@ type Asset struct {
 	Type         Type
 	ParentType   Type
 	ChecksumType string
+	MatchedAsset IAsset
 
 	OS      string
 	Arch    string
@@ -151,6 +158,13 @@ func (a *Asset) GetChecksumType() string {
 		return "multi"
 	}
 	return "none"
+}
+
+func (a *Asset) GetMatchedAsset() IAsset {
+	return a.MatchedAsset
+}
+func (a *Asset) SetMatchedAsset(asset IAsset) {
+	a.MatchedAsset = asset
 }
 
 func (a *Asset) GetAsset() *Asset {
@@ -225,7 +239,7 @@ func (a *Asset) Classify(name string) Type { //nolint:gocyclo
 		}
 	}
 
-	logrus.Tracef("classified: %s (%d)", name, aType)
+	logrus.Tracef("classified: %s - %s (type: %d)", name, aType, aType)
 
 	return aType
 }

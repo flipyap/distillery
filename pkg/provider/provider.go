@@ -6,18 +6,17 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/apex/log"
-	"github.com/sirupsen/logrus"
-
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/checksum"
 	"github.com/ekristen/distillery/pkg/config"
 	"github.com/ekristen/distillery/pkg/cosign"
 	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/ekristen/distillery/pkg/score"
+	"github.com/sirupsen/logrus"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -382,6 +381,7 @@ func (p *Provider) discoverSignature(version string) error {
 			for _, a := range p.Assets {
 				if topScored.Key == a.GetName() {
 					p.Signature = a
+					p.Key = a.GetMatchedAsset()
 					break
 				}
 			}
@@ -497,8 +497,74 @@ func (p *Provider) discoverKey(version string) error {
 	return nil
 }
 
+func (p *Provider) discoverMatch() error {
+	logger := logrus.WithField("discover", "match")
+
+	// Match keys to signatures.
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Signature {
+			continue
+		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		for _, aa := range p.Assets {
+			if aa.GetType() != asset.Key {
+				continue
+			}
+
+			childS := strings.TrimSuffix(aa.GetName(), filepath.Ext(aa.GetName()))
+			parentS := strings.TrimSuffix(a.GetName(), filepath.Ext(a.GetName()))
+
+			if strings.EqualFold(childS, parentS) {
+				logger.Tracef("matched key: %s to signature: %s", aa.GetName(), a.GetName())
+				a.SetMatchedAsset(aa)
+				aa.SetMatchedAsset(a)
+				break
+			}
+		}
+	}
+
+	// Match remaining keys to signatures, hopefully there's only a single key remaining
+	// TODO: what to do if there are multiple keys remaining? (Maybe support multiple matched???)
+	// Use Case: Keyless vs Keyed signing, cosign does both. The keyed file is used for multiple files.
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Key {
+			continue
+		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		logger.Tracef("unmatched key: %s", a.GetName())
+
+		for _, b := range p.Assets {
+			if b.GetType() != asset.Signature {
+				continue
+			}
+
+			if b.GetMatchedAsset() != nil {
+				continue
+			}
+
+			b.SetMatchedAsset(a)
+			logger.Tracef("matched key: %s to signature: %s", a.GetName(), b.GetName())
+		}
+
+	}
+
+	return nil
+}
+
 // Discover will attempt to discover and categorize the assets provided
 func (p *Provider) Discover(names []string, version string) error { //nolint:funlen,gocyclo
+	if err := p.discoverMatch(); err != nil {
+		return err
+	}
+
 	if err := p.discoverBinary(names, version); err != nil {
 		return err
 	}
@@ -515,9 +581,9 @@ func (p *Provider) Discover(names []string, version string) error { //nolint:fun
 		return err
 	}
 
-	if err := p.discoverKey(version); err != nil {
-		return err
-	}
+	//if err := p.discoverKey(version); err != nil {
+	//	return err
+	//}
 
 	return nil
 }
@@ -596,7 +662,11 @@ func (p *Provider) verifySignature() error {
 
 	publicKeyContent, err := base64.StdEncoding.DecodeString(string(publicKeyContentEncoded))
 	if err != nil {
-		return err
+		if errors.Is(err, base64.CorruptInputError(0)) {
+			publicKeyContent = publicKeyContentEncoded
+		} else {
+			return err
+		}
 	}
 
 	pubKey, err := cosign.ParsePublicKey(publicKeyContent)
@@ -611,7 +681,9 @@ func (p *Provider) verifySignature() error {
 		return err
 	}
 
-	valid, err := cosign.VerifySignature(pubKey, fileContent, sigData)
+	dataHash := cosign.HashData(fileContent)
+
+	valid, err := cosign.VerifySignature(pubKey, dataHash, sigData)
 	if err != nil {
 		return err
 	}

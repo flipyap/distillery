@@ -248,8 +248,8 @@ func TestSourceDiscover(t *testing.T) {
 					expected: testSourceDiscoverExpected{
 						binary:    "cosign-darwin-amd64",
 						checksum:  "cosign_checksums.txt",
-						signature: "cosign-darwin-amd64-keyless.sig",
-						key:       "cosign-darwin-amd64-keyless.pem",
+						signature: "cosign-darwin-amd64.sig",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
@@ -260,7 +260,7 @@ func TestSourceDiscover(t *testing.T) {
 						binary:    "cosign-darwin-arm64",
 						checksum:  "cosign_checksums.txt",
 						signature: "cosign-darwin-arm64.sig",
-						key:       "cosign-darwin-arm64-keyless.pem",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
@@ -271,7 +271,7 @@ func TestSourceDiscover(t *testing.T) {
 						binary:    "cosign-linux-amd64",
 						checksum:  "cosign_checksums.txt",
 						signature: "cosign-linux-amd64.sig",
-						key:       "cosign-linux-amd64-keyless.pem",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
@@ -282,7 +282,7 @@ func TestSourceDiscover(t *testing.T) {
 						binary:    "cosign-linux-arm64",
 						checksum:  "cosign_checksums.txt",
 						signature: "cosign-linux-arm64.sig",
-						key:       "cosign-linux-arm64-keyless.pem",
+						key:       "release-cosign.pub",
 					},
 				},
 				{
@@ -293,7 +293,7 @@ func TestSourceDiscover(t *testing.T) {
 						binary:    "cosign-windows-amd64.exe",
 						checksum:  "cosign_checksums.txt",
 						signature: "cosign-windows-amd64.exe.sig",
-						key:       "cosign-windows-amd64.exe-keyless.pem",
+						key:       "release-cosign.pub",
 					},
 				},
 			},

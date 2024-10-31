@@ -63,7 +63,7 @@ func TestVerifySignature(t *testing.T) {
 	fmt.Println("Signature:", signatureBase64)
 
 	// Test verifying the signature
-	valid, err := cosign.VerifySignature(&privKey.PublicKey, data, []byte(signatureBase64))
+	valid, err := cosign.VerifySignature(&privKey.PublicKey, hash, []byte(signatureBase64))
 	if err != nil {
 		t.Fatalf("Failed to verify signature: %v", err)
 	}
@@ -103,8 +103,49 @@ func TestVerifyChecksumSignature(t *testing.T) {
 		t.Fatalf("Failed to parse public key: %v", err)
 	}
 
+	dataHash := cosign.HashData(dataContent)
+
 	// Verify the signature
-	valid, err := cosign.VerifySignature(pubKey, dataContent, signatureContent)
+	valid, err := cosign.VerifySignature(pubKey, dataHash, signatureContent)
+	if err != nil {
+		t.Fatalf("Failed to verify signature: %v", err)
+	}
+	if !valid {
+		t.Fatalf("Signature verification failed")
+	}
+}
+
+func TestVerifyChecksumSignaturePublicKey(t *testing.T) {
+	// Read the contents of checksums.txt.pem
+	publicKeyContent, err := os.ReadFile("testdata/release.pub")
+	if err != nil {
+		t.Fatalf("Failed to read public key file: %v", err)
+	}
+
+	// Read the contents of checksums.txt.sig
+	signatureContent, err := os.ReadFile("testdata/release.sig")
+	if err != nil {
+		t.Fatalf("Failed to read signature file: %v", err)
+	}
+
+	// Decode the PEM-encoded public key
+	pubKey, err := cosign.ParsePublicKey(publicKeyContent)
+	if err != nil {
+		t.Fatalf("Failed to parse public key: %v", err)
+	}
+
+	dataHashEncoded, err := os.ReadFile("testdata/release.sha256")
+	if err != nil {
+		t.Fatalf("Failed to read data file: %v", err)
+	}
+
+	dataHash, err := base64.StdEncoding.DecodeString(string(dataHashEncoded))
+	if err != nil {
+		t.Fatalf("Failed to decode base64 data hash: %v", err)
+	}
+
+	// Verify the signature
+	valid, err := cosign.VerifySignature(pubKey, dataHash, signatureContent)
 	if err != nil {
 		t.Fatalf("Failed to verify signature: %v", err)
 	}
