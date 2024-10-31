@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
 	"io"
 	"math"
 	"os"
@@ -614,6 +615,30 @@ func (a *Asset) processXz(in io.Reader) (io.Reader, error) {
 func (a *Asset) processBz2(in io.Reader) (io.Reader, error) {
 	br := bzip2.NewReader(in)
 	return br, nil
+}
+
+func (a *Asset) GetGPGKeyID() (uint64, error) {
+	if a.Type != Signature {
+		return 0, fmt.Errorf("asset is not a signature: %s", a.GetName())
+	}
+
+	signatureContent, err := os.ReadFile(a.GetFilePath())
+	if err != nil {
+		return 0, fmt.Errorf("failed to read signature: %w", err)
+	}
+
+	// Parse the armored signature
+	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse signature: %w", err)
+	}
+
+	ids, ok := signature.GetSignatureKeyIDs()
+	if !ok {
+		return 0, errors.New("signature does not contain a key ID")
+	}
+
+	return ids[0], nil
 }
 
 func int64ToUint32(value int64) (uint32, error) {

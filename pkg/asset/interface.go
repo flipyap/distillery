@@ -20,4 +20,5 @@ type IAsset interface {
 	GetChecksumType() string
 	GetMatchedAsset() IAsset
 	SetMatchedAsset(IAsset)
+	GetGPGKeyID() (uint64, error)
 }

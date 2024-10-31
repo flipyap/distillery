@@ -6,17 +6,23 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/apex/log"
+	"github.com/sirupsen/logrus"
+
+	"github.com/ProtonMail/gopenpgp/v2/crypto"
+
 	"github.com/ekristen/distillery/pkg/asset"
 	"github.com/ekristen/distillery/pkg/checksum"
 	"github.com/ekristen/distillery/pkg/config"
 	"github.com/ekristen/distillery/pkg/cosign"
 	"github.com/ekristen/distillery/pkg/osconfig"
 	"github.com/ekristen/distillery/pkg/score"
-	"github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -553,7 +559,29 @@ func (p *Provider) discoverMatch() error {
 			b.SetMatchedAsset(a)
 			logger.Tracef("matched key: %s to signature: %s", a.GetName(), b.GetName())
 		}
+	}
 
+	for _, a := range p.Assets {
+		if a.GetType() != asset.Signature {
+			continue
+		}
+
+		if a.GetMatchedAsset() != nil {
+			continue
+		}
+
+		keyName := strings.ReplaceAll(a.GetName(), ".asc", ".pub")
+
+		gpgAsset := &GPGAsset{
+			Asset: asset.New(keyName, "", p.GetOS(), p.GetArch(), ""),
+		}
+
+		gpgAsset.SetMatchedAsset(a)
+		a.SetMatchedAsset(gpgAsset)
+
+		p.Assets = append(p.Assets, gpgAsset)
+
+		log.Info("gpg detected will fetch public key")
 	}
 
 	return nil
@@ -580,10 +608,6 @@ func (p *Provider) Discover(names []string, version string) error { //nolint:fun
 	if err := p.discoverSignature(version); err != nil {
 		return err
 	}
-
-	//if err := p.discoverKey(version); err != nil {
-	//	return err
-	//}
 
 	return nil
 }
@@ -630,6 +654,128 @@ func (p *Provider) verifySignature() error {
 		log.Warn("skipping signature verification (no signature)")
 		return nil
 	}
+
+	// TODO: better pgp detection
+	if strings.HasSuffix(p.Signature.GetName(), ".asc") {
+		return p.verifyGPGSignature()
+	}
+
+	return p.verifyCosignSignature()
+}
+
+func (p *Provider) verifyGPGSignature() error {
+	keyID, err := ExtractKeyIDFromSignature(p.Signature.GetFilePath())
+	if err != nil {
+		return err
+	}
+
+	logrus.Trace("keyID: ", keyID)
+
+	key, err := DownloadGPGKey(fmt.Sprintf("%X", keyID))
+	if err != nil {
+		return err
+	}
+
+	var filePath string
+	if p.SignatureType == "checksum" {
+		filePath = p.Checksum.GetFilePath()
+	} else {
+		filePath = p.Binary.GetFilePath()
+	}
+
+	if err := VerifyGPGSignature(key, p.Signature.GetFilePath(), filePath); err != nil {
+		return err
+	}
+
+	log.Info("signature verified")
+
+	return nil
+}
+
+// ExtractKeyIDFromSignature extracts the key ID from a GPG signature file.
+func ExtractKeyIDFromSignature(signaturePath string) (uint64, error) {
+	signatureContent, err := os.ReadFile(signaturePath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to read signature: %w", err)
+	}
+
+	// Parse the armored signature
+	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse signature: %w", err)
+	}
+
+	ids, ok := signature.GetSignatureKeyIDs()
+	if !ok {
+		return 0, errors.New("signature does not contain a key ID")
+	}
+
+	// Extract and return the key ID
+	return ids[0], nil
+}
+
+// DownloadGPGKey downloads a GPG key from the Ubuntu key server.
+func DownloadGPGKey(keyID string) (string, error) {
+	url := fmt.Sprintf("https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x%s", keyID)
+
+	// Make the HTTP request
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download key: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check if the request was successful
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to download key: server returned status %s", resp.Status)
+	}
+
+	// Copy the response body to the output file
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save key to file: %w", err)
+	}
+
+	return string(data), nil
+}
+
+// VerifyGPGSignature verifies the GPG signature of a file using the provided public key.
+func VerifyGPGSignature(publicKey, signaturePath, filePath string) error {
+	signatureContent, err := os.ReadFile(signaturePath)
+	if err != nil {
+		return fmt.Errorf("failed to read signature file: %w", err)
+	}
+
+	fileContent, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file to be verified: %w", err)
+	}
+
+	keyObj, err := crypto.NewKeyFromArmoredReader(strings.NewReader(publicKey))
+	if err != nil {
+		return fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	keyRing, err := crypto.NewKeyRing(keyObj)
+	if err != nil {
+		return fmt.Errorf("failed to create keyring: %w", err)
+	}
+
+	message := crypto.NewPlainMessage(fileContent)
+	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
+	if err != nil {
+		return fmt.Errorf("failed to parse signature: %w", err)
+	}
+
+	err = keyRing.VerifyDetached(message, signature, crypto.GetUnixTime())
+	if err != nil {
+		return fmt.Errorf("signature verification failed: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Provider) verifyCosignSignature() error {
 	if p.Key == nil {
 		log.Warn("skipping signature verification (no key)")
 		return nil

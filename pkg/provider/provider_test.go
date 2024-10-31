@@ -453,6 +453,31 @@ func TestSourceDiscover(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:    "gitlab-runner",
+			version: "16.11.4",
+			filenames: []string{
+				"release.sha256.asc",
+				"release.sha256",
+				"gitlab-runner-linux-amd64",
+				"gitlab-runner-linux-arm64",
+				"gitlab-runner-darwin-arm64",
+				"gitlab-runner-darwin-amd64",
+			},
+			matrix: []testSourceDiscoverMatrix{
+				{
+					os:      "darwin",
+					arch:    "amd64",
+					version: "16.11.4",
+					expected: testSourceDiscoverExpected{
+						binary:    "gitlab-runner-darwin-amd64",
+						checksum:  "release.sha256",
+						signature: "release.sha256.asc",
+						key:       "release.sha256.pub",
+					},
+				},
+			},
+		},
 	}
 
 	t.Parallel()
