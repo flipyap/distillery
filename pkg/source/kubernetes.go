@@ -75,6 +75,16 @@ func (s *Kubernetes) GetReleaseAssets(_ context.Context) error {
 		Kubernetes: s,
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/%s/%s/%s.sha256",
 			s.Version, s.GetOS(), s.GetArch(), s.AppName),
+	}, &KubernetesAsset{
+		Asset:      asset.New(binName+".sig", "", s.GetOS(), s.GetArch(), s.Version),
+		Kubernetes: s,
+		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/%s/%s/%s.sig",
+			s.Version, s.GetOS(), s.GetArch(), s.AppName),
+	}, &KubernetesAsset{
+		Asset:      asset.New(binName+".cert", "", s.GetOS(), s.GetArch(), s.Version),
+		Kubernetes: s,
+		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/%s/%s/%s.cert",
+			s.Version, s.GetOS(), s.GetArch(), s.AppName),
 	})
 
 	return nil

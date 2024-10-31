@@ -32,6 +32,8 @@ var (
 	apkType      = filetype.AddType("apk", "application/vnd.android.package-archive")
 	ascType      = filetype.AddType("asc", "text/plain")
 	pemType      = filetype.AddType("pem", "application/x-pem-file")
+	certType     = filetype.AddType("cert", "application/x-x509-ca-cert")
+	crtType      = filetype.AddType("crt", "application/x-x509-ca-cert")
 	sigType      = filetype.AddType("sig", "text/plain")
 	sbomJSONType = filetype.AddType("sbom.json", "application/json")
 	bomJSONType  = filetype.AddType("bom.json", "application/json")
@@ -200,7 +202,7 @@ func (a *Asset) Classify(name string) Type { //nolint:gocyclo
 			aType = Binary
 		case sigType, ascType:
 			aType = Signature
-		case pemType, pubType:
+		case pemType, pubType, certType, crtType:
 			aType = Key
 		case sbomJSONType, bomJSONType, sbomType, bomType:
 			aType = SBOM
