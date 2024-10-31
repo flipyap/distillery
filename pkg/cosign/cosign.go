@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"math/big"
 )
 
@@ -48,18 +47,18 @@ func ParsePublicKey(pemEncodedPubKey []byte) (*ecdsa.PublicKey, error) {
 
 // VerifySignature verifies the signature of the data using the provided ECDSA public key.
 func VerifySignature(pubKey *ecdsa.PublicKey, data, signature []byte) (bool, error) {
-	hash := sha256.Sum256(data)
-	fmt.Printf("Data hash: %x\n", hash)
+	hasher := sha256.New()
+	hasher.Write(data)
+	hash := hasher.Sum(nil)
 
-	r, s, err := decodeSignature(signature)
+	// Decode the base64 encoded signature
+	sig, err := base64.StdEncoding.DecodeString(string(signature))
 	if err != nil {
 		return false, err
 	}
 
-	fmt.Printf("r: %s\n", r.String())
-	fmt.Printf("s: %s\n", s.String())
-
-	valid := ecdsa.Verify(pubKey, hash[:], r, s)
+	// Verify the signature using VerifyASN1
+	valid := ecdsa.VerifyASN1(pubKey, hash, sig)
 
 	return valid, nil
 }
