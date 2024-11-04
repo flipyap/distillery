@@ -10,13 +10,6 @@
     "automerge": true,
     "assignees": [
       "@ekristen"
-    ],
-    "packageRules": [
-      {
-        "matchManagers": ["gomod"],
-        "matchDepTypes": ["indirect"],
-        "enabled": true
-      }
     ]
   },
   "postUpdateOptions": [
@@ -24,6 +17,12 @@
     "gomodTidy"
   ],
   "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "enabled": true
+    },
     {
       "matchUpdateTypes": [
         "minor",
