@@ -108,10 +108,6 @@ func (s *Homebrew) PreRun(ctx context.Context) error {
 }
 
 func (s *Homebrew) Run(ctx context.Context) error {
-	if err := s.sourceRun(ctx); err != nil {
-		return err
-	}
-
 	if err := s.Discover([]string{s.Formula}, s.Version); err != nil {
 		return err
 	}

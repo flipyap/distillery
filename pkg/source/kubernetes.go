@@ -108,10 +108,6 @@ func (s *Kubernetes) PreRun(ctx context.Context) error {
 }
 
 func (s *Kubernetes) Run(ctx context.Context) error {
-	if err := s.sourceRun(ctx); err != nil {
-		return err
-	}
-
 	// this is from the Provider struct
 	if err := s.Discover([]string{s.Repo}, s.Version); err != nil {
 		return err
