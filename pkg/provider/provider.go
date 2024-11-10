@@ -61,6 +61,10 @@ func (p *Provider) GetArch() string {
 	return p.Options.Arch
 }
 
+func (p *Provider) GetVersion() string {
+	return "not-implemented"
+}
+
 // CommonRun - common run logic for all sources that includes download, extract, install and cleanup
 func (p *Provider) CommonRun(ctx context.Context) error {
 	if err := p.Download(ctx); err != nil {
@@ -738,7 +742,7 @@ func (p *Provider) Extract() error {
 
 func (p *Provider) Install() error {
 	return p.Binary.Install(
-		p.Binary.ID(), p.Options.Config.BinPath, filepath.Join(p.Options.Config.OptPath, p.Binary.Path()))
+		p.Binary.ID(), p.Options.Config.BinPath, filepath.Join(p.Options.Config.GetOptPath(), p.Binary.Path()))
 }
 
 func (p *Provider) Cleanup() error {

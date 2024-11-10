@@ -41,7 +41,7 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	path := filepath.Join(cfg.OptPath, src.GetSource(), src.GetOwner(), src.GetRepo())
+	path := filepath.Join(cfg.GetOptPath(), src.GetSource(), src.GetOwner(), src.GetRepo())
 
 	logrus.Trace("path: ", path)
 

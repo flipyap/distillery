@@ -9,5 +9,7 @@ type ISource interface {
 	GetApp() string
 	GetID() string
 	GetDownloadsDir() string
+	GetVersion() string
+	PreRun(context.Context) error
 	Run(context.Context) error
 }

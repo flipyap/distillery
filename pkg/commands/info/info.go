@@ -24,15 +24,15 @@ func Execute(c *cli.Context) error {
 	log.Infof("   arch: %s", runtime.GOARCH)
 	fmt.Println("")
 	log.Infof("configuration")
-	log.Infof("   home: %s", cfg.HomePath)
+	log.Infof("   home: %s", cfg.Path)
 	log.Infof("    bin: %s", cfg.BinPath)
-	log.Infof("    opt: %s", cfg.OptPath)
+	log.Infof("    opt: %s", cfg.GetOptPath())
 	log.Infof("  cache: %s", cfg.CachePath)
 	fmt.Println("")
 	log.Warnf("To cleanup all of distillery, remove the following directories:")
 	log.Warnf("  - %s", cfg.GetCachePath())
 	log.Warnf("  - %s", cfg.BinPath)
-	log.Warnf("  - %s", cfg.OptPath)
+	log.Warnf("  - %s", cfg.GetOptPath())
 
 	return nil
 }

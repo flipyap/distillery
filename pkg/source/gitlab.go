@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/gregjones/httpcache"
 	"github.com/gregjones/httpcache/diskcache"
@@ -39,6 +40,14 @@ func (s *GitLab) GetApp() string {
 }
 func (s *GitLab) GetID() string {
 	return fmt.Sprintf("%s/%s/%s", s.GetSource(), s.GetOwner(), s.GetRepo())
+}
+
+func (s *GitLab) GetVersion() string {
+	if s.Release == nil {
+		return "unknown"
+	}
+
+	return strings.TrimPrefix(s.Release.TagName, "v")
 }
 
 func (s *GitLab) GetDownloadsDir() string {
@@ -81,6 +90,14 @@ func (s *GitLab) sourceRun(ctx context.Context) error {
 			GitLab: s,
 			Link:   a,
 		})
+	}
+
+	return nil
+}
+
+func (s *GitLab) PreRun(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
 	}
 
 	return nil

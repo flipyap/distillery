@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/google/go-github/v66/github"
@@ -35,6 +36,14 @@ func (s *Kubernetes) GetApp() string {
 }
 func (s *Kubernetes) GetID() string {
 	return fmt.Sprintf("%s-%s", s.GetSource(), s.GetRepo())
+}
+
+func (s *Kubernetes) GetVersion() string {
+	if s.Release == nil {
+		return "unknown"
+	}
+
+	return strings.TrimPrefix(s.Release.GetTagName(), "v")
 }
 
 func (s *Kubernetes) GetDownloadsDir() string {
@@ -86,6 +95,14 @@ func (s *Kubernetes) GetReleaseAssets(_ context.Context) error {
 		URL: fmt.Sprintf("https://dl.k8s.io/release/v%s/bin/%s/%s/%s.cert",
 			s.Version, s.GetOS(), s.GetArch(), s.AppName),
 	})
+
+	return nil
+}
+
+func (s *Kubernetes) PreRun(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
 
 	return nil
 }
