@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-
 	"path/filepath"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/ekristen/distillery/pkg/asset"
+	"github.com/ekristen/distillery/pkg/common"
 	"github.com/ekristen/distillery/pkg/provider"
 )
 
@@ -50,6 +50,22 @@ func (s *GitHub) GetDownloadsDir() string {
 
 func (s *GitHub) GetID() string {
 	return strings.Join([]string{s.GetSource(), s.GetOwner(), s.GetRepo(), s.GetOS(), s.GetArch()}, "-")
+}
+
+func (s *GitHub) GetVersion() string {
+	if s.Release == nil {
+		return common.Unknown
+	}
+
+	return strings.TrimPrefix(s.Release.GetTagName(), "v")
+}
+
+func (s *GitHub) PreRun(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Run - run the source
@@ -140,8 +156,6 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	if release == nil {
 		return fmt.Errorf("release not found")
 	}
-
-	log.Infof("selected version: %s", strings.TrimPrefix(release.GetTagName(), "v"))
 
 	s.Release = release
 

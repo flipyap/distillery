@@ -42,6 +42,10 @@ func (s *Homebrew) GetID() string {
 	return s.Formula
 }
 
+func (s *Homebrew) GetVersion() string {
+	return strings.TrimPrefix(s.Version, "v")
+}
+
 func (s *Homebrew) GetDownloadsDir() string {
 	return filepath.Join(s.Options.Config.GetDownloadsPath(), s.GetSource(), s.GetOwner(), s.GetRepo(), s.Version)
 }
@@ -89,6 +93,15 @@ func (s *Homebrew) sourceRun(ctx context.Context) error {
 			FileVariant: &newVariant,
 			Homebrew:    s,
 		})
+	}
+
+	return nil
+}
+
+// PreRun - run the source specific logic
+func (s *Homebrew) PreRun(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
 	}
 
 	return nil

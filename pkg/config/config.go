@@ -14,17 +14,14 @@ import (
 )
 
 type Config struct {
-	// HomePath - path to store the configuration files, this path is set by default based on the operating system type
+	// Path - path to store the configuration files, this path is set by default based on the operating system type
 	// and your user's home directory. Typically, this is set to $HOME/.distillery
-	HomePath string `yaml:"home_path" toml:"home_path"`
+	Path string `yaml:"path" toml:"path"`
 
 	// BinPath - path to create symlinks for your binaries, this path is set by default based on the operating system type
 	// This is the path that is added to your PATH environment variable. Typically, this is set to $HOME/.distillery/bin
+	// This allows you to override the location for symlinks. For example, you can instead put them all in /usr/local/bin
 	BinPath string `yaml:"bin_path" toml:"bin_path"`
-
-	// OptPath - path to store the binaries that are installed, this path is set by default based on the operating
-	// system type. This is where the symlinks in the BinPath point to. Typically, this is set to $HOME/.distillery/opt
-	OptPath string `yaml:"opt_path" toml:"opt_path"`
 
 	// CachePath - path to store cache files, this path is set by default based on the operating system type
 	CachePath string `yaml:"cache_path" toml:"cache_path"`
@@ -55,8 +52,12 @@ func (c *Config) GetDownloadsPath() string {
 	return filepath.Join(c.CachePath, common.NAME, "downloads")
 }
 
+func (c *Config) GetOptPath() string {
+	return filepath.Join(c.Path, "opt")
+}
+
 func (c *Config) MkdirAll() error {
-	paths := []string{c.BinPath, c.OptPath, c.CachePath, c.GetMetadataPath(), c.GetDownloadsPath()}
+	paths := []string{c.BinPath, c.GetOptPath(), c.CachePath, c.GetMetadataPath(), c.GetDownloadsPath()}
 
 	for _, path := range paths {
 		err := os.MkdirAll(path, 0755)
@@ -102,12 +103,12 @@ func New(path string) (*Config, error) {
 		cfg.DefaultSource = "github"
 	}
 
-	if cfg.HomePath == "" {
+	if cfg.Path == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return cfg, err
 		}
-		cfg.HomePath = filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME))
+		cfg.Path = filepath.Join(homeDir, fmt.Sprintf(".%s", common.NAME))
 	}
 
 	if cfg.CachePath == "" {
@@ -119,11 +120,7 @@ func New(path string) (*Config, error) {
 	}
 
 	if cfg.BinPath == "" {
-		cfg.BinPath = filepath.Join(cfg.HomePath, "bin")
-	}
-
-	if cfg.OptPath == "" {
-		cfg.OptPath = filepath.Join(cfg.HomePath, "opt")
+		cfg.BinPath = filepath.Join(cfg.Path, "bin")
 	}
 
 	return cfg, nil

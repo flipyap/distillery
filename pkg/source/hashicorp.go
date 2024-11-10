@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"path/filepath"
 
@@ -41,6 +42,10 @@ func (s *Hashicorp) GetApp() string {
 }
 func (s *Hashicorp) GetID() string {
 	return fmt.Sprintf("%s-%s", s.GetSource(), s.GetRepo())
+}
+
+func (s *Hashicorp) GetVersion() string {
+	return strings.TrimPrefix(s.Version, "v")
 }
 
 func (s *Hashicorp) GetDownloadsDir() string {
@@ -109,6 +114,14 @@ func (s *Hashicorp) sourceRun(ctx context.Context) error {
 			},
 			Release: release,
 		})
+	}
+
+	return nil
+}
+
+func (s *Hashicorp) PreRun(ctx context.Context) error {
+	if err := s.sourceRun(ctx); err != nil {
+		return err
 	}
 
 	return nil

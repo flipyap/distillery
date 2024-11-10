@@ -77,7 +77,7 @@ func Execute(c *cli.Context) error {
 func init() {
 	cmd := &cli.Command{
 		Name:        "list",
-		Usage:       "list",
+		Usage:       "list installed binaries and versions",
 		Description: `list installed binaries and versions`,
 		Before:      common.Before,
 		Flags:       common.Flags(),

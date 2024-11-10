@@ -13,6 +13,7 @@ import (
 
 	"github.com/ekristen/distillery/pkg/common"
 	"github.com/ekristen/distillery/pkg/config"
+	"github.com/ekristen/distillery/pkg/inventory"
 	"github.com/ekristen/distillery/pkg/provider"
 )
 
@@ -32,6 +33,8 @@ func Execute(c *cli.Context) error {
 		_ = c.Set("include-pre-releases", "true")
 	}
 
+	inv := inventory.New(os.DirFS(cfg.BinPath), cfg.BinPath, cfg.GetOptPath(), cfg)
+
 	src, err := NewSource(c.Args().First(), &provider.Options{
 		OS:     c.String("os"),
 		Arch:   c.String("arch"),
@@ -40,6 +43,7 @@ func Execute(c *cli.Context) error {
 			"version":              c.String("version"),
 			"github-token":         c.String("github-token"),
 			"gitlab-token":         c.String("gitlab-token"),
+			"no-signature-verify":  c.String("no-signature-verify"),
 			"no-checksum-verify":   c.Bool("no-checksum-verify"),
 			"no-score-check":       c.Bool("no-score-check"),
 			"include-pre-releases": c.Bool("include-pre-releases"),
@@ -49,15 +53,42 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	log.Infof("distillery/%s", common.AppVersion.Summary)
-	log.Infof(" source: %s", src.GetSource())
-	log.Infof("    app: %s", src.GetApp())
-	log.Infof("version: %s", c.String("version"))
-	log.Infof("     os: %s", c.String("os"))
-	log.Infof("   arch: %s", c.String("arch"))
-
+	var userFlags []string
 	if c.Bool("include-pre-releases") {
-		log.Infof("including pre-releases")
+		userFlags = append(userFlags, "including pre-releases")
+	}
+
+	log.Infof("distillery/%s", common.AppVersion.Summary)
+	for _, flag := range userFlags {
+		log.Infof("   flag: %s", flag)
+	}
+
+	log.Infof("source: %s", src.GetSource())
+	log.Infof("app: %s", src.GetApp())
+	log.Infof("os: %s", c.String("os"))
+	log.Infof("arch: %s", c.String("arch"))
+
+	if c.String("version") == common.Latest {
+		log.Infof("determining latest version")
+	} else {
+		log.Infof("version: %s", c.String("version"))
+	}
+
+	if err := src.PreRun(c.Context); err != nil {
+		return err
+	}
+
+	if c.String("version") == common.Latest {
+		log.Infof("version: %s", src.GetVersion())
+	}
+
+	if c.String("version") == "latest" && !c.Bool("force") {
+		latestInstalled := inv.GetLatestVersion(fmt.Sprintf("%s/%s", src.GetSource(), src.GetApp()))
+		if latestInstalled.Version == src.GetVersion() {
+			log.Warnf("already installed")
+			log.Infof("reinstall with --force (%s)", time.Since(start))
+			return nil
+		}
 	}
 
 	if err := src.Run(c.Context); err != nil {
@@ -182,6 +213,9 @@ func Flags() []cli.Flag {
 		&cli.BoolFlag{
 			Name:  "no-score-check",
 			Usage: "disable scoring check",
+		},
+		&cli.BoolFlag{
+			Name: "force",
 		},
 	}
 }
