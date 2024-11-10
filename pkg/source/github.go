@@ -134,6 +134,7 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 
 			return err
 		}
+
 		for _, r := range releases {
 			includePreReleases := s.Options.Settings["include-pre-releases"].(bool)
 			if includePreReleases && r.GetPrerelease() {
