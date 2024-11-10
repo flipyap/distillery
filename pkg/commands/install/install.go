@@ -84,7 +84,7 @@ func Execute(c *cli.Context) error {
 
 	if c.String("version") == "latest" && !c.Bool("force") {
 		latestInstalled := inv.GetLatestVersion(fmt.Sprintf("%s/%s", src.GetSource(), src.GetApp()))
-		if latestInstalled.Version == src.GetVersion() {
+		if latestInstalled != nil && latestInstalled.Version == src.GetVersion() {
 			log.Warnf("already installed")
 			log.Infof("reinstall with --force (%s)", time.Since(start))
 			return nil
@@ -207,15 +207,22 @@ func Flags() []cli.Flag {
 			Aliases: []string{"pre"},
 		},
 		&cli.BoolFlag{
-			Name:  "no-checksum-verify",
-			Usage: "disable checksum verification",
+			Name:    "no-checksum-verify",
+			Usage:   "disable checksum verification",
+			EnvVars: []string{"DISTILLERY_NO_CHECKSUM_VERIFY"},
+		},
+		&cli.BoolFlag{
+			Name:    "no-signature-verify",
+			Usage:   "disable signature verification",
+			EnvVars: []string{"DISTILLERY_NO_SIGNATURE_VERIFY"},
 		},
 		&cli.BoolFlag{
 			Name:  "no-score-check",
 			Usage: "disable scoring check",
 		},
 		&cli.BoolFlag{
-			Name: "force",
+			Name:  "force",
+			Usage: "force the installation of the binary even if it is already installed",
 		},
 	}
 }
