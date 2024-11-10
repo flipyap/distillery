@@ -377,11 +377,11 @@ func (p *Provider) discoverSignature(version string) error { //nolint:gocyclo
 	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
 	for _, t := range []asset.Type{asset.Signature} {
 		if len(fileScored[t]) > 0 {
-			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
+			logger.WithField("type", "signature").Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
 
 			topScored := fileScored[t][0]
 			if topScored.Value < 40 {
-				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
+				logger.WithField("type", "signature").Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
 				continue
 			}
 			for _, a := range p.Assets {
@@ -627,7 +627,7 @@ func (p *Provider) verifyCosignSignature() error { //nolint:gocyclo
 			return err
 		}
 		if err := json.Unmarshal(sigData, &bundle); err != nil {
-			log.WithError(err).Trace("unable to parse json for bundle signature")
+			log.WithError(err).Debug("unable to parse json for bundle signature")
 		}
 
 		if bundle == nil {
