@@ -17,7 +17,7 @@ import (
 	"github.com/ekristen/distillery/pkg/provider"
 )
 
-func Execute(c *cli.Context) error {
+func Execute(c *cli.Context) error { //nolint:gocyclo
 	start := time.Now().UTC()
 
 	cfg, err := config.New(c.String("config"))
