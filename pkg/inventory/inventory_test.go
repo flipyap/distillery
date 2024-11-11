@@ -5,11 +5,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ekristen/distillery/pkg/config"
 	"github.com/ekristen/distillery/pkg/inventory"
 )
+
+func init() {
+	logrus.SetLevel(logrus.TraceLevel)
+}
 
 func TestInventory_New(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "inventory_test")
@@ -29,22 +34,25 @@ func TestInventory_New(t *testing.T) {
 	_ = os.MkdirAll(symPath, 0755)
 	_ = os.MkdirAll(binPath, 0755)
 
-	binaries := map[string]string{
+	cfg.Path = filepath.Join(tempDir, ".distillery")
+	cfg.BinPath = binPath
+
+	symlinks := map[string]string{
 		"test":               "github/ekristen/test/2.0.0/test",
 		"test@1.0.0":         "github/ekristen/test/1.0.0/test",
 		"test@2.0.0":         "github/ekristen/test/2.0.0/test",
-		"another-test@1.0.0": "github/ekristen/another-test/1.0.0/another-test",
-		"another-test@1.0.1": "github/ekristen/another-test/1.0.1/another-test",
+		"another-test@3.0.0": "github/ekristen/another-test/3.0.0/another-test",
+		"another-test@3.0.1": "github/ekristen/another-test/3.0.1/another-test",
 	}
 
-	for bin, target := range binaries {
-		targetBase := filepath.Dir(target)
-		targetName := filepath.Base(target)
+	for link, bin := range symlinks {
+		targetBase := filepath.Dir(bin)
+		targetName := filepath.Base(bin)
 		realBin := filepath.Join(binPath, targetBase, targetName)
 		_ = os.MkdirAll(filepath.Join(realBin, targetBase), 0755)
 		_ = os.WriteFile(realBin, []byte("test"), 0600)
 
-		symlinkPath := filepath.Join(symPath, bin)
+		symlinkPath := filepath.Join(symPath, link)
 		if err := os.Symlink(realBin, symlinkPath); err != nil {
 			t.Fatalf("Failed to create symlink: %v", err)
 		}
@@ -55,7 +63,46 @@ func TestInventory_New(t *testing.T) {
 
 	assert.NotNil(t, inv)
 	assert.Equal(t, 2, inv.Count())
-	assert.Equal(t, len(binaries), inv.FullCount())
+	assert.Equal(t, 4, inv.FullCount()) // Note: 4 because 1 is marked as latest
+
+	binVersionsExpected := &inventory.Bin{
+		Name:   "test",
+		Source: "github",
+		Owner:  "ekristen",
+		Repo:   "test",
+		Versions: []*inventory.Version{
+			{
+				Version: "1.0.0",
+				Path:    ".distillery/bin/test@1.0.0",
+				Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+			},
+			{
+				Version: "2.0.0",
+				Path:    ".distillery/bin/test@2.0.0",
+				Latest:  true,
+				Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+			},
+		},
+	}
+
+	assert.EqualValues(t, binVersionsExpected, inv.GetBinVersions("github/ekristen/test"))
+
+	binVersionExpected := &inventory.Version{
+		Version: "1.0.0",
+		Path:    ".distillery/bin/test@1.0.0",
+		Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+	}
+
+	assert.EqualValues(t, binVersionExpected, inv.GetBinVersion("github/ekristen/test", "1.0.0"))
+
+	latestBinVersionExpected := &inventory.Version{
+		Version: "2.0.0",
+		Path:    ".distillery/bin/test@2.0.0",
+		Latest:  true,
+		Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+	}
+
+	assert.EqualValues(t, latestBinVersionExpected, inv.GetLatestVersion("github/ekristen/test"))
 }
 
 func TestInventory_AddVersion(t *testing.T) {
@@ -70,8 +117,11 @@ func TestInventory_AddVersion(t *testing.T) {
 				"/home/test/.distillery/bin/test@1.0.0": "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
 			},
 			expected: map[string]*inventory.Bin{
-				"test": {
-					Name: "test",
+				"github/ekristen/test": {
+					Name:   "test",
+					Source: "github",
+					Owner:  "ekristen",
+					Repo:   "test",
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
@@ -89,8 +139,11 @@ func TestInventory_AddVersion(t *testing.T) {
 				"/home/test/.distillery/bin/test@2.0.0": "/home/test/.distillery/opt/github/ekristen/test/2.0.0/test",
 			},
 			expected: map[string]*inventory.Bin{
-				"test": {
-					Name: "test",
+				"github/ekristen/test": {
+					Name:   "test",
+					Source: "github",
+					Owner:  "ekristen",
+					Repo:   "test",
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
@@ -115,8 +168,11 @@ func TestInventory_AddVersion(t *testing.T) {
 				"/home/test/.distillery/bin/another-test@1.0.1": "/home/test/.distillery/opt/github/ekristen/another-test/1.0.1/another-test",
 			},
 			expected: map[string]*inventory.Bin{
-				"test": {
-					Name: "test",
+				"github/ekristen/test": {
+					Name:   "test",
+					Source: "github",
+					Owner:  "ekristen",
+					Repo:   "test",
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
@@ -130,8 +186,11 @@ func TestInventory_AddVersion(t *testing.T) {
 						},
 					},
 				},
-				"another-test": {
-					Name: "another-test",
+				"github/ekristen/another-test": {
+					Name:   "another-test",
+					Source: "github",
+					Owner:  "ekristen",
+					Repo:   "another-test",
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
@@ -151,7 +210,13 @@ func TestInventory_AddVersion(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := config.New("")
+			cfg.Path = "/home/test/.distillery"
+			cfg.BinPath = "/home/test/.distillery/opt"
+
+			assert.NoError(t, err)
 			inv := inventory.Inventory{}
+			inv.SetConfig(cfg)
 			for bin, target := range tc.bins {
 				_ = inv.AddVersion(bin, target)
 			}
