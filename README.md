@@ -146,6 +146,8 @@ you can set aliases in your `.envrc` file for specific versions.
 
 ## Directory Structure
 
+This is the default directory structure that distillery uses. Some of this can be overridden via the configuration.
+
 - Binaries
   - Symlinks `$HOME/.distillery/bin` (this should be in your `$PATH` variable)
   - Binaries `$HOME/.distillery/opt` (this is where the raw binaries are stored and symlinked to)
