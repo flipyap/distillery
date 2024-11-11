@@ -17,7 +17,7 @@ import (
 	"github.com/ekristen/distillery/pkg/provider"
 )
 
-func Execute(c *cli.Context) error {
+func Execute(c *cli.Context) error { //nolint:gocyclo
 	start := time.Now().UTC()
 
 	cfg, err := config.New(c.String("config"))
@@ -29,13 +29,20 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	if c.Args().First() == "ekristen/distillery" {
+	inv := inventory.New(os.DirFS(cfg.BinPath), cfg.BinPath, cfg.GetOptPath(), cfg)
+
+	name := c.Args().First()
+	alias := cfg.GetAlias(c.Args().First())
+	if alias != nil {
+		name = alias.Name
+		_ = c.Set("version", alias.Version)
+	}
+
+	if name == "ekristen/distillery" {
 		_ = c.Set("include-pre-releases", "true")
 	}
 
-	inv := inventory.New(os.DirFS(cfg.BinPath), cfg.BinPath, cfg.GetOptPath(), cfg)
-
-	src, err := NewSource(c.Args().First(), &provider.Options{
+	src, err := NewSource(name, &provider.Options{
 		OS:     c.String("os"),
 		Arch:   c.String("arch"),
 		Config: cfg,
@@ -186,7 +193,7 @@ func Flags() []cli.Flag {
 			Aliases: []string{"c"},
 			Usage:   "Specify the configuration file to use",
 			EnvVars: []string{"DISTILLERY_CONFIG"},
-			Value:   filepath.Join(cfgDir, fmt.Sprintf("%s.toml", common.NAME)),
+			Value:   filepath.Join(cfgDir, fmt.Sprintf("%s.yaml", common.NAME)),
 		},
 		&cli.StringFlag{
 			Name:     "github-token",

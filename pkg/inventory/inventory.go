@@ -18,6 +18,11 @@ type Inventory struct {
 	latestPaths map[string]string
 }
 
+// SetConfig - set the configuration for the inventory - primarily used for tests only
+func (i *Inventory) SetConfig(cfg *config.Config) {
+	i.config = cfg
+}
+
 func (i *Inventory) AddVersion(path, target string) error {
 	binName := filepath.Base(path)
 	version := "latest"
@@ -170,6 +175,11 @@ func New(fileSystem fs.FS, basePath, binPath string, cfg *config.Config) *Invent
 		if err != nil {
 			logrus.WithError(err).Warn("failed to read symlink")
 		}
+
+		logrus.WithFields(logrus.Fields{
+			"path":   path,
+			"target": target,
+		}).Trace("adding version")
 
 		if err := inv.AddVersion(path, target); err != nil {
 			logrus.WithError(err).Warn("failed to add version")

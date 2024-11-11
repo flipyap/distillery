@@ -48,7 +48,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 			}, nil
 		}
 
-		return nil, fmt.Errorf("invalid install source, expect format of owner/repo or owner/repo@version")
+		return nil, fmt.Errorf("invalid install source, expect alias or format of owner/repo or owner/repo@version")
 	}
 
 	if len(parts) == 2 {
@@ -95,7 +95,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 			}, nil
 		}
 
-		return nil, fmt.Errorf("invalid install source, expect format of owner/repo or owner/repo@version")
+		return nil, fmt.Errorf("invalid install source, expect alias	 or format of owner/repo or owner/repo@version")
 	} else if len(parts) >= 3 {
 		if strings.HasPrefix(parts[0], "github") {
 			if parts[1] == source.HashicorpSource {
