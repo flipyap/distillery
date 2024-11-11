@@ -5,11 +5,11 @@ import (
 	"path"
 
 	"github.com/apex/log"
-	"github.com/rancher/wrangler/pkg/signals"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ekristen/distillery/pkg/common"
+	"github.com/ekristen/distillery/pkg/signals"
 
 	_ "github.com/ekristen/distillery/pkg/commands/clean"
 	_ "github.com/ekristen/distillery/pkg/commands/completion"
