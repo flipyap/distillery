@@ -14,6 +14,8 @@ import (
 	"github.com/ekristen/distillery/pkg/provider"
 )
 
+const GitLabSource = "gitlab"
+
 type GitLab struct {
 	provider.Provider
 
@@ -27,7 +29,7 @@ type GitLab struct {
 }
 
 func (s *GitLab) GetSource() string {
-	return "gitlab"
+	return GitLabSource
 }
 func (s *GitLab) GetOwner() string {
 	return s.Owner

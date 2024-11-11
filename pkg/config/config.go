@@ -13,6 +13,7 @@ import (
 	"github.com/ekristen/distillery/pkg/common"
 )
 
+// Config - the configuration for distillery
 type Config struct {
 	// Path - path to store the configuration files, this path is set by default based on the operating system type
 	// and your user's home directory. Typically, this is set to $HOME/.distillery
@@ -40,22 +41,27 @@ type Config struct {
 	Language string `yaml:"language" toml:"language"`
 }
 
+// GetCachePath - get the cache path
 func (c *Config) GetCachePath() string {
 	return filepath.Join(c.CachePath, common.NAME)
 }
 
+// GetMetadataPath - get the metadata path
 func (c *Config) GetMetadataPath() string {
 	return filepath.Join(c.CachePath, common.NAME, "metadata")
 }
 
+// GetDownloadsPath - get the downloads path
 func (c *Config) GetDownloadsPath() string {
 	return filepath.Join(c.CachePath, common.NAME, "downloads")
 }
 
+// GetOptPath - get the opt path
 func (c *Config) GetOptPath() string {
 	return filepath.Join(c.Path, "opt")
 }
 
+// GetAlias - get an alias by name
 func (c *Config) GetAlias(name string) *Alias {
 	if c.Aliases == nil {
 		return nil
@@ -70,6 +76,7 @@ func (c *Config) GetAlias(name string) *Alias {
 	return nil
 }
 
+// MkdirAll - create all the directories
 func (c *Config) MkdirAll() error {
 	paths := []string{c.BinPath, c.GetOptPath(), c.CachePath, c.GetMetadataPath(), c.GetDownloadsPath()}
 

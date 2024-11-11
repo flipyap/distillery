@@ -86,7 +86,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 				Repo:     parts[1],
 				Version:  version,
 			}, nil
-		case "gitlab":
+		case source.GitLabSource:
 			return &source.GitLab{
 				Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
 				Owner:    parts[0],
@@ -97,7 +97,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 
 		return nil, fmt.Errorf("invalid install source, expect alias	 or format of owner/repo or owner/repo@version")
 	} else if len(parts) >= 3 {
-		if strings.HasPrefix(parts[0], "github") {
+		if strings.HasPrefix(parts[0], source.GitHubSource) {
 			if parts[1] == source.HashicorpSource {
 				return &source.Hashicorp{
 					Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
@@ -123,7 +123,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 				Repo:     parts[2],
 				Version:  version,
 			}, nil
-		} else if strings.HasPrefix(parts[0], "gitlab") {
+		} else if strings.HasPrefix(parts[0], source.GitLabSource) {
 			return &source.GitLab{
 				Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
 				Owner:    parts[1],
