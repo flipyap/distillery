@@ -2,7 +2,9 @@ package info
 
 import (
 	"fmt"
+	"os"
 	"runtime"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/urfave/cli/v2"
@@ -17,7 +19,8 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	log.Infof("distillery/%s", common.AppVersion.Summary)
+	log.Info("version information")
+	log.Infof("  distillery/%s", common.AppVersion.Summary)
 	fmt.Println("")
 	log.Infof("system information")
 	log.Infof("     os: %s", runtime.GOOS)
@@ -33,6 +36,14 @@ func Execute(c *cli.Context) error {
 	log.Warnf("  - %s", cfg.GetCachePath())
 	log.Warnf("  - %s", cfg.BinPath)
 	log.Warnf("  - %s", cfg.GetOptPath())
+
+	path := os.Getenv("PATH")
+	if !strings.Contains(path, cfg.BinPath) {
+		fmt.Println("")
+		log.Warnf("Problem: distillery will not work correctly")
+		log.Warnf("  - %s is not in your PATH", cfg.BinPath)
+		fmt.Println("")
+	}
 
 	return nil
 }

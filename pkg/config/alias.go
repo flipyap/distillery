@@ -9,9 +9,9 @@ import (
 type Aliases map[string]*Alias
 
 type Alias struct {
-	Name    string `yaml:"name" toml:"name"`
-	Version string `yaml:"version" toml:"version"`
-	Bin     string `yaml:"bin" toml:"bin"`
+	Name    string          `yaml:"name" toml:"name"`
+	Version string          `yaml:"version" toml:"version"`
+	Flags   map[string]bool `yaml:"flags" toml:"flags"`
 }
 
 func (a *Alias) UnmarshalYAML(unmarshal func(interface{}) error) error {
