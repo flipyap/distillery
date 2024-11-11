@@ -34,7 +34,7 @@ type Config struct {
 
 	// Aliases - Allow for creating shorthand aliases for source locations that you use frequently. A good example
 	// of this is `distillery` -> `ekristen/distillery`
-	Aliases map[string]string `yaml:"aliases" toml:"aliases"`
+	Aliases *Aliases `yaml:"aliases" toml:"aliases"`
 
 	// Language - the language to use for the output of the application
 	Language string `yaml:"language" toml:"language"`
@@ -54,6 +54,20 @@ func (c *Config) GetDownloadsPath() string {
 
 func (c *Config) GetOptPath() string {
 	return filepath.Join(c.Path, "opt")
+}
+
+func (c *Config) GetAlias(name string) *Alias {
+	if c.Aliases == nil {
+		return nil
+	}
+
+	for short, alias := range *c.Aliases {
+		if short == name {
+			return alias
+		}
+	}
+
+	return nil
 }
 
 func (c *Config) MkdirAll() error {
@@ -85,7 +99,7 @@ func (c *Config) Load(path string) error {
 		return toml.Unmarshal(data, c)
 	}
 
-	return nil
+	return fmt.Errorf("unknown configuration file suffix")
 }
 
 // New - create a new configuration object
