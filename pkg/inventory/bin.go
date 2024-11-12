@@ -10,6 +10,14 @@ type Bin struct {
 	Repo     string
 }
 
+func (b *Bin) ListVersions() []string {
+	var versions []string
+	for _, v := range b.Versions {
+		versions = append(versions, v.Version)
+	}
+	return versions
+}
+
 func (b *Bin) GetInstallPath(base string) string {
 	return filepath.Join(base, b.Source, b.Owner, b.Repo)
 }

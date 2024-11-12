@@ -109,7 +109,10 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 	var err error
 	var release *github.RepositoryRelease
 
-	logrus.WithField("owner", s.GetOwner()).WithField("repo", s.GetRepo()).Trace("finding release")
+	logrus.
+		WithField("owner", s.GetOwner()).
+		WithField("repo", s.GetRepo()).
+		Tracef("finding release for %s", s.Version)
 
 	if s.Version == provider.VersionLatest {
 		release, _, err = s.client.Repositories.GetLatestRelease(ctx, s.GetOwner(), s.GetRepo())
@@ -136,6 +139,11 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 		}
 
 		for _, r := range releases {
+			logrus.
+				WithField("owner", s.GetOwner()).
+				WithField("repo", s.GetRepo()).
+				Tracef("found release: %s", r.GetTagName())
+
 			includePreReleases := s.Options.Settings["include-pre-releases"].(bool)
 			if includePreReleases && r.GetPrerelease() {
 				s.Version = strings.TrimPrefix(r.GetTagName(), "v")
@@ -143,7 +151,9 @@ func (s *GitHub) FindRelease(ctx context.Context) error {
 				break
 			}
 
-			if r.GetTagName() == s.Version || r.GetName() == fmt.Sprintf("v%s", s.Version) {
+			tagName := strings.TrimPrefix(r.GetTagName(), "v")
+
+			if tagName == s.Version {
 				release = r
 				break
 			}

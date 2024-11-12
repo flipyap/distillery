@@ -2,8 +2,6 @@ package list
 
 import (
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/apex/log"
@@ -11,6 +9,7 @@ import (
 
 	"github.com/ekristen/distillery/pkg/common"
 	"github.com/ekristen/distillery/pkg/config"
+	"github.com/ekristen/distillery/pkg/inventory"
 )
 
 func Execute(c *cli.Context) error {
@@ -19,56 +18,11 @@ func Execute(c *cli.Context) error {
 		return err
 	}
 
-	bins := make(map[string]map[string]string)
+	inv := inventory.New(os.DirFS(cfg.BinPath), cfg.BinPath, cfg.GetOptPath(), cfg)
 
-	_ = filepath.Walk(cfg.BinPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		fileInfo, err := os.Lstat(path)
-		if err != nil {
-			return err
-		}
-
-		if fileInfo.Mode()&os.ModeSymlink == os.ModeSymlink {
-			simpleName := info.Name()
-			version := "latest"
-			parts := strings.Split(info.Name(), "@")
-			if len(parts) > 1 {
-				simpleName = parts[0]
-				version = parts[1]
-			}
-
-			if _, ok := bins[simpleName]; !ok {
-				bins[simpleName] = make(map[string]string)
-			}
-
-			bins[simpleName][version] = path
-
-			return nil
-		}
-
-		return nil
-	})
-
-	var keys []string
-	for key := range bins {
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		var versions []string
-		for version := range bins[key] {
-			versions = append(versions, version)
-		}
-		log.Infof("%s (versions: %s)", key, strings.Join(versions, ", "))
+	for _, key := range inv.GetBinsSortedKeys() {
+		bin := inv.Bins[key]
+		log.Infof("%s (versions: %s)", key, strings.Join(bin.ListVersions(), ", "))
 	}
 
 	return nil
