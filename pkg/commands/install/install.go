@@ -89,9 +89,16 @@ func Execute(c *cli.Context) error { //nolint:gocyclo
 		log.Infof("version: %s", src.GetVersion())
 	}
 
-	if c.String("version") == "latest" && !c.Bool("force") {
-		latestInstalled := inv.GetLatestVersion(fmt.Sprintf("%s/%s", src.GetSource(), src.GetApp()))
-		if latestInstalled != nil && latestInstalled.Version == src.GetVersion() {
+	if !c.Bool("force") {
+		var installedVersion *inventory.Version
+
+		if c.String("version") == common.Latest {
+			installedVersion = inv.GetLatestVersion(fmt.Sprintf("%s/%s", src.GetSource(), src.GetApp()))
+		} else {
+			installedVersion = inv.GetBinVersion(fmt.Sprintf("%s/%s", src.GetSource(), src.GetApp()), c.String("version"))
+		}
+
+		if installedVersion != nil && installedVersion.Version == src.GetVersion() {
 			log.Warnf("already installed")
 			log.Infof("reinstall with --force (%s)", time.Since(start))
 			return nil
