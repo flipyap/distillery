@@ -40,6 +40,7 @@ func (a *GPGAsset) Download(ctx context.Context) error {
 
 	a.KeyID, err = a.MatchedAsset.GetGPGKeyID()
 	if err != nil {
+		logrus.WithError(err).Trace("unable to get GPG key")
 		return err
 	}
 

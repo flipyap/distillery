@@ -164,7 +164,11 @@ func (p *Provider) discoverBinary(names []string, version string) error { //noli
 	}
 
 	// Note: we want to look for the best binary by looking at binaries, archives and unknowns
-	for _, t := range []asset.Type{asset.Binary, asset.Archive, asset.Unknown} {
+	for _, t := range []asset.Type{asset.Unknown, asset.Binary, asset.Archive} {
+		if p.Binary != nil {
+			break
+		}
+
 		if len(fileScored[t]) > 0 {
 			logger.Tracef("top scored (%d): %s (%d)", t, fileScored[t][0].Key, fileScored[t][0].Value)
 
@@ -173,6 +177,7 @@ func (p *Provider) discoverBinary(names []string, version string) error { //noli
 				logger.Tracef("skipped > (%d) too low: %s (%d)", t, topScored.Key, topScored.Value)
 				continue
 			}
+
 			for _, a := range p.Assets {
 				if topScored.Key == a.GetName() {
 					p.Binary = a
@@ -460,6 +465,8 @@ func (p *Provider) discoverMatch() error { //nolint:gocyclo
 		}
 	}
 
+	foundGPG := false
+
 	for _, a := range p.Assets {
 		if a.GetType() != asset.Signature {
 			continue
@@ -479,12 +486,17 @@ func (p *Provider) discoverMatch() error { //nolint:gocyclo
 			Asset: asset.New(keyName, "", p.GetOS(), p.GetArch(), ""),
 		}
 
+		logrus.WithField("sig", a.GetName()).WithField("key", gpgAsset.GetName()).Trace("matched asset")
+
+		if !foundGPG {
+			log.Info("gpg detected will fetch public key for signature")
+			foundGPG = true
+		}
+
 		gpgAsset.SetMatchedAsset(a)
 		a.SetMatchedAsset(gpgAsset)
 
 		p.Assets = append(p.Assets, gpgAsset)
-
-		log.Info("gpg detected will fetch public key")
 	}
 
 	return nil
@@ -605,7 +617,7 @@ func (p *Provider) verifyGPGSignature() error {
 	message := crypto.NewPlainMessage(fileContent)
 	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
 	if err != nil {
-		return fmt.Errorf("failed to parse signature: %w", err)
+		signature = crypto.NewPGPSignature(signatureContent)
 	}
 
 	err = keyRing.VerifyDetached(message, signature, crypto.GetUnixTime())
