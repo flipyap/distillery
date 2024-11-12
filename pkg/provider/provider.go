@@ -150,11 +150,11 @@ func (p *Provider) discoverBinary(names []string, version string) error { //noli
 	}
 
 	if !highEnoughScore && !p.Options.Settings["no-score-check"].(bool) {
-		logger.Error("no matching asset found, score too low")
+		log.Error("no matching asset found, score too low")
 		for _, t := range []asset.Type{asset.Binary, asset.Unknown, asset.Archive} {
 			for _, v := range fileScored[t] {
 				if v.Value < 40 {
-					logger.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", v.Key, v.Value)
+					log.Errorf("closest matching: %s (%d) (threshold: 40) -- override with --no-score-check", v.Key, v.Value)
 					return errors.New("no matching asset found, score too low")
 				}
 			}

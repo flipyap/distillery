@@ -19,7 +19,8 @@ const GitLabSource = "gitlab"
 type GitLab struct {
 	provider.Provider
 
-	client *gitlab.Client
+	client  *gitlab.Client
+	BaseURL string
 
 	Owner   string
 	Repo    string
@@ -60,6 +61,9 @@ func (s *GitLab) sourceRun(ctx context.Context) error {
 	cacheFile := filepath.Join(s.Options.Config.GetMetadataPath(), fmt.Sprintf("cache-%s", s.GetID()))
 
 	s.client = gitlab.NewClient(httpcache.NewTransport(diskcache.New(cacheFile)).Client())
+	if s.BaseURL != "" {
+		s.client.SetBaseURL(s.BaseURL)
+	}
 	token := s.Options.Settings["gitlab-token"].(string)
 	if token != "" {
 		s.client.SetToken(token)
