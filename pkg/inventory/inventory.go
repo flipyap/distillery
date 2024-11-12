@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -16,6 +17,15 @@ type Inventory struct {
 	Bins   map[string]*Bin
 
 	latestPaths map[string]string
+}
+
+func (i *Inventory) GetBinsSortedKeys() []string {
+	sortedKeys := make([]string, 0, len(i.Bins))
+	for key := range i.Bins {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+	return sortedKeys
 }
 
 // SetConfig - set the configuration for the inventory - primarily used for tests only

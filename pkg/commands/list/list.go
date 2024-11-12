@@ -20,8 +20,9 @@ func Execute(c *cli.Context) error {
 
 	inv := inventory.New(os.DirFS(cfg.BinPath), cfg.BinPath, cfg.GetOptPath(), cfg)
 
-	for short, bin := range inv.Bins {
-		log.Infof("%s (versions: %s)", short, strings.Join(bin.ListVersions(), ", "))
+	for _, key := range inv.GetBinsSortedKeys() {
+		bin := inv.Bins[key]
+		log.Infof("%s (versions: %s)", key, strings.Join(bin.ListVersions(), ", "))
 	}
 
 	return nil
