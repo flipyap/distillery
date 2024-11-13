@@ -134,8 +134,7 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 
 		for pn, p := range opts.Config.Providers {
 			if pn == parts[0] {
-				switch p.Provider {
-				case source.GitLabSource:
+				if p.Provider == source.GitLabSource {
 					s := &source.GitLab{
 						Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
 						BaseURL:  p.BaseURL,

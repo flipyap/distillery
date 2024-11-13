@@ -93,7 +93,7 @@ func (p *Provider) CommonRun(ctx context.Context) error {
 	return nil
 }
 
-func (p *Provider) discoverBinary(names []string, version string) error { //nolint:gocyclo
+func (p *Provider) discoverBinary(names []string, version string) error { //nolint:gocyclo,funlen
 	logger := logrus.WithField("discover", "binary")
 	logger.Tracef("names: %v", names)
 
