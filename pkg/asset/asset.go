@@ -36,6 +36,7 @@ var (
 	certType     = filetype.AddType("cert", "application/x-x509-ca-cert")
 	crtType      = filetype.AddType("crt", "application/x-x509-ca-cert")
 	sigType      = filetype.AddType("sig", "text/plain")
+	pkgType      = filetype.AddType("pkg", "application/octet-stream")
 	sbomJSONType = filetype.AddType("sbom.json", "application/json")
 	bomJSONType  = filetype.AddType("bom.json", "application/json")
 	jsonType     = filetype.AddType("json", "application/json")
@@ -204,7 +205,7 @@ func (a *Asset) Classify(name string) Type { //nolint:gocyclo
 
 	if ext := strings.TrimPrefix(filepath.Ext(name), "."); ext != "" {
 		switch filetype.GetType(ext) {
-		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType:
+		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType, pkgType:
 			aType = Installer
 		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType:
 			aType = Archive
@@ -391,6 +392,22 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 }
 
 func (a *Asset) Cleanup() error {
+	if logrus.GetLevel() == logrus.TraceLevel {
+		logrus.Tracef("walking tempdir")
+		// walk the a.TempDir and log all the files
+		err := filepath.Walk(a.TempDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			logrus.Tracef("file: %s", path)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	logrus.WithField("asset", a.GetName()).Tracef("cleaning up temp dir: %s", a.TempDir)
 	return os.RemoveAll(a.TempDir)
 }
@@ -521,6 +538,7 @@ func (a *Asset) processZip(in io.Reader) (io.Reader, error) {
 		f.Close()
 
 		a.Files = append(a.Files, &File{Name: header.Name})
+
 		logrus.Tracef("zip > create file %s", target)
 	}
 
@@ -639,7 +657,8 @@ func (a *Asset) GetGPGKeyID() (uint64, error) {
 	// Parse the armored signature
 	signature, err := crypto.NewPGPSignatureFromArmored(string(signatureContent))
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse signature: %w", err)
+		// Assume unarmored it not armored
+		signature = crypto.NewPGPSignature(signatureContent)
 	}
 
 	ids, ok := signature.GetSignatureKeyIDs()

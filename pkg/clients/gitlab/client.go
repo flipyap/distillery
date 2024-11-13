@@ -16,21 +16,27 @@ const baseURL = "https://gitlab.com/api/v4"
 
 func NewClient(client *http.Client) *Client {
 	return &Client{
-		client: client,
+		client:  client,
+		baseURL: baseURL,
 	}
 }
 
 type Client struct {
-	client *http.Client
-	token  string
+	client  *http.Client
+	baseURL string
+	token   string
 }
 
 func (c *Client) SetToken(token string) {
 	c.token = token
 }
 
+func (c *Client) SetBaseURL(baseURL string) {
+	c.baseURL = baseURL
+}
+
 func (c *Client) ListReleases(ctx context.Context, slug string) ([]*Release, error) {
-	releaseURL := fmt.Sprintf("%s/projects/%s/releases", baseURL, url.QueryEscape(slug))
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases", c.baseURL, url.QueryEscape(slug))
 	logrus.Tracef("GET %s", releaseURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)
@@ -59,7 +65,7 @@ func (c *Client) ListReleases(ctx context.Context, slug string) ([]*Release, err
 }
 
 func (c *Client) GetLatestRelease(ctx context.Context, slug string) (*Release, error) {
-	releaseURL := fmt.Sprintf("%s/projects/%s/releases?per_page=1", baseURL, url.QueryEscape(slug))
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases?per_page=1", c.baseURL, url.QueryEscape(slug))
 	logrus.Tracef("GET %s", releaseURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)
@@ -88,7 +94,7 @@ func (c *Client) GetLatestRelease(ctx context.Context, slug string) (*Release, e
 }
 
 func (c *Client) GetRelease(ctx context.Context, slug, version string) (*Release, error) {
-	releaseURL := fmt.Sprintf("%s/projects/%s/releases/%s", baseURL, url.QueryEscape(slug), url.QueryEscape(version))
+	releaseURL := fmt.Sprintf("%s/projects/%s/releases/%s", c.baseURL, url.QueryEscape(slug), url.QueryEscape(version))
 	logrus.Tracef("GET %s", releaseURL)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", releaseURL, http.NoBody)

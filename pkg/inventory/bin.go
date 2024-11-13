@@ -11,10 +11,16 @@ type Bin struct {
 }
 
 func (b *Bin) ListVersions() []string {
-	var versions []string
+	versionMap := make(map[string]struct{})
 	for _, v := range b.Versions {
-		versions = append(versions, v.Version)
+		versionMap[v.Version] = struct{}{}
 	}
+
+	var versions []string
+	for version := range versionMap {
+		versions = append(versions, version)
+	}
+
 	return versions
 }
 

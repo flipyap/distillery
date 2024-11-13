@@ -132,6 +132,21 @@ func NewSource(src string, opts *provider.Options) (provider.ISource, error) { /
 			}, nil
 		}
 
+		for pn, p := range opts.Config.Providers {
+			if pn == parts[0] {
+				if p.Provider == source.GitLabSource {
+					s := &source.GitLab{
+						Provider: provider.Provider{Options: opts, OSConfig: detectedOS},
+						BaseURL:  p.BaseURL,
+						Owner:    parts[1],
+						Repo:     parts[2],
+						Version:  version,
+					}
+					return s, nil
+				}
+			}
+		}
+
 		return nil, fmt.Errorf("unknown source: %s", src)
 	}
 

@@ -53,7 +53,7 @@ func Score(names []string, opts *Options) []Sorted { //nolint:gocyclo
 				scores = map[string]int{
 					name: 200,
 				}
-				return sortMapByValue(scores)
+				return SortMapByValue(scores)
 			}
 		}
 
@@ -109,7 +109,7 @@ func Score(names []string, opts *Options) []Sorted { //nolint:gocyclo
 		scores[name] = score + calculateAccuracyScore(name, opts.GetAllStrings())
 	}
 
-	return sortMapByValue(scores)
+	return SortMapByValue(scores)
 }
 
 func removeExtension(filename string) string {
@@ -168,7 +168,7 @@ type Sorted struct {
 	Value int
 }
 
-func sortMapByValue(m map[string]int) []Sorted {
+func SortMapByValue(m map[string]int) []Sorted {
 	var sorted []Sorted
 
 	// Create a slice of key-value pairs

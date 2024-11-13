@@ -39,6 +39,10 @@ type Config struct {
 
 	// Language - the language to use for the output of the application
 	Language string `yaml:"language" toml:"language"`
+
+	// Providers - allow for custom providers that uses one of the build in providers as a base. A good example of this
+	// is gitlab.alpinelinux.org, since gitlab is open source, you can use the gitlab provider as a base
+	Providers map[string]*Provider `yaml:"providers" toml:"providers"`
 }
 
 // GetCachePath - get the cache path
