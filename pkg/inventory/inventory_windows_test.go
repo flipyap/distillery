@@ -1,6 +1,3 @@
-//go:build !windows
-// +build !windows
-
 package inventory_test
 
 import (
@@ -19,7 +16,7 @@ func init() {
 	logrus.SetLevel(logrus.TraceLevel)
 }
 
-func TestInventory_New(t *testing.T) {
+func TestInventoryWindowsNew(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "inventory_test")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
@@ -32,12 +29,12 @@ func TestInventory_New(t *testing.T) {
 		t.Fatalf("Failed to create config: %v", err)
 	}
 
-	symPath := filepath.Join(tempDir, ".distillery", "bin")
-	binPath := filepath.Join(tempDir, ".distillery", "opt")
+	symPath := filepath.ToSlash(filepath.Join(tempDir, ".distillery", "bin"))
+	binPath := filepath.ToSlash(filepath.Join(tempDir, ".distillery", "opt"))
 	_ = os.MkdirAll(symPath, 0755)
 	_ = os.MkdirAll(binPath, 0755)
 
-	cfg.Path = filepath.Join(tempDir, ".distillery")
+	cfg.Path = filepath.ToSlash(filepath.Join(tempDir, ".distillery"))
 	cfg.BinPath = binPath
 
 	symlinks := map[string]string{
@@ -51,11 +48,11 @@ func TestInventory_New(t *testing.T) {
 	for link, bin := range symlinks {
 		targetBase := filepath.Dir(bin)
 		targetName := filepath.Base(bin)
-		realBin := filepath.Join(binPath, targetBase, targetName)
+		realBin := filepath.ToSlash(filepath.Join(binPath, targetBase, targetName))
 		_ = os.MkdirAll(filepath.Join(realBin, targetBase), 0755)
 		_ = os.WriteFile(realBin, []byte("test"), 0600)
 
-		symlinkPath := filepath.Join(symPath, link)
+		symlinkPath := filepath.ToSlash(filepath.Join(symPath, link))
 		if err := os.Symlink(realBin, symlinkPath); err != nil {
 			t.Fatalf("Failed to create symlink: %v", err)
 		}
@@ -77,13 +74,17 @@ func TestInventory_New(t *testing.T) {
 			{
 				Version: "1.0.0",
 				Path:    ".distillery/bin/test@1.0.0",
-				Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+				Target: filepath.ToSlash(
+					filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+				),
 			},
 			{
 				Version: "2.0.0",
 				Path:    ".distillery/bin/test@2.0.0",
 				Latest:  true,
-				Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+				Target: filepath.ToSlash(
+					filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+				),
 			},
 		},
 	}
@@ -93,7 +94,9 @@ func TestInventory_New(t *testing.T) {
 	binVersionExpected := &inventory.Version{
 		Version: "1.0.0",
 		Path:    ".distillery/bin/test@1.0.0",
-		Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+		Target: filepath.ToSlash(
+			filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "1.0.0", "test"),
+		),
 	}
 
 	assert.EqualValues(t, binVersionExpected, inv.GetBinVersion("github/ekristen/test", "1.0.0"))
@@ -102,13 +105,15 @@ func TestInventory_New(t *testing.T) {
 		Version: "2.0.0",
 		Path:    ".distillery/bin/test@2.0.0",
 		Latest:  true,
-		Target:  filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+		Target: filepath.ToSlash(
+			filepath.Join(tempDir, ".distillery", "opt", "github", "ekristen", "test", "2.0.0", "test"),
+		),
 	}
 
 	assert.EqualValues(t, latestBinVersionExpected, inv.GetLatestVersion("github/ekristen/test"))
 }
 
-func TestInventory_AddVersion(t *testing.T) {
+func TestInventoryWindowsAddVersion(t *testing.T) {
 	cases := []struct {
 		name     string
 		bins     map[string]string
@@ -117,7 +122,7 @@ func TestInventory_AddVersion(t *testing.T) {
 		{
 			name: "simple",
 			bins: map[string]string{
-				"/home/test/.distillery/bin/test@1.0.0": "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+				"c:/users/test/.distillery/bin/test@1.0.0": "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
 			},
 			expected: map[string]*inventory.Bin{
 				"github/ekristen/test": {
@@ -128,8 +133,8 @@ func TestInventory_AddVersion(t *testing.T) {
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
-							Path:    "/home/test/.distillery/bin/test@1.0.0",
-							Target:  "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+							Path:    "c:/users/test/.distillery/bin/test@1.0.0",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
 						},
 					},
 				},
@@ -138,8 +143,8 @@ func TestInventory_AddVersion(t *testing.T) {
 		{
 			name: "multiple",
 			bins: map[string]string{
-				"/home/test/.distillery/bin/test@1.0.0": "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
-				"/home/test/.distillery/bin/test@2.0.0": "/home/test/.distillery/opt/github/ekristen/test/2.0.0/test",
+				"c:/users/test/.distillery/bin/test@1.0.0": "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+				"c:/users/test/.distillery/bin/test@2.0.0": "c:/users/test/.distillery/opt/github/ekristen/test/2.0.0/test",
 			},
 			expected: map[string]*inventory.Bin{
 				"github/ekristen/test": {
@@ -150,13 +155,13 @@ func TestInventory_AddVersion(t *testing.T) {
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
-							Path:    "/home/test/.distillery/bin/test@1.0.0",
-							Target:  "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+							Path:    "c:/users/test/.distillery/bin/test@1.0.0",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
 						},
 						{
 							Version: "2.0.0",
-							Path:    "/home/test/.distillery/bin/test@2.0.0",
-							Target:  "/home/test/.distillery/opt/github/ekristen/test/2.0.0/test",
+							Path:    "c:/users/test/.distillery/bin/test@2.0.0",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/test/2.0.0/test",
 						},
 					},
 				},
@@ -165,10 +170,10 @@ func TestInventory_AddVersion(t *testing.T) {
 		{
 			name: "complex",
 			bins: map[string]string{
-				"/home/test/.distillery/bin/test@1.0.0":         "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
-				"/home/test/.distillery/bin/test@1.0.1":         "/home/test/.distillery/opt/github/ekristen/test/1.0.1/test",
-				"/home/test/.distillery/bin/another-test@1.0.0": "/home/test/.distillery/opt/github/ekristen/another-test/1.0.0/another-test",
-				"/home/test/.distillery/bin/another-test@1.0.1": "/home/test/.distillery/opt/github/ekristen/another-test/1.0.1/another-test",
+				"c:/users/test/.distillery/bin/test@1.0.0":         "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+				"c:/users/test/.distillery/bin/test@1.0.1":         "c:/users/test/.distillery/opt/github/ekristen/test/1.0.1/test",
+				"c:/users/test/.distillery/bin/another-test@1.0.0": "c:/users/test/.distillery/opt/github/ekristen/another-test/1.0.0/another-test",
+				"c:/users/test/.distillery/bin/another-test@1.0.1": "c:/users/test/.distillery/opt/github/ekristen/another-test/1.0.1/another-test",
 			},
 			expected: map[string]*inventory.Bin{
 				"github/ekristen/test": {
@@ -179,13 +184,13 @@ func TestInventory_AddVersion(t *testing.T) {
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
-							Path:    "/home/test/.distillery/bin/test@1.0.0",
-							Target:  "/home/test/.distillery/opt/github/ekristen/test/1.0.0/test",
+							Path:    "c:/users/test/.distillery/bin/test@1.0.0",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/test/1.0.0/test",
 						},
 						{
 							Version: "1.0.1",
-							Path:    "/home/test/.distillery/bin/test@1.0.1",
-							Target:  "/home/test/.distillery/opt/github/ekristen/test/1.0.1/test",
+							Path:    "c:/users/test/.distillery/bin/test@1.0.1",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/test/1.0.1/test",
 						},
 					},
 				},
@@ -197,13 +202,13 @@ func TestInventory_AddVersion(t *testing.T) {
 					Versions: []*inventory.Version{
 						{
 							Version: "1.0.0",
-							Path:    "/home/test/.distillery/bin/another-test@1.0.0",
-							Target:  "/home/test/.distillery/opt/github/ekristen/another-test/1.0.0/another-test",
+							Path:    "c:/users/test/.distillery/bin/another-test@1.0.0",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/another-test/1.0.0/another-test",
 						},
 						{
 							Version: "1.0.1",
-							Path:    "/home/test/.distillery/bin/another-test@1.0.1",
-							Target:  "/home/test/.distillery/opt/github/ekristen/another-test/1.0.1/another-test",
+							Path:    "c:/users/test/.distillery/bin/another-test@1.0.1",
+							Target:  "c:/users/test/.distillery/opt/github/ekristen/another-test/1.0.1/another-test",
 						},
 					},
 				},
@@ -214,14 +219,14 @@ func TestInventory_AddVersion(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, err := config.New("")
-			cfg.Path = "/home/test/.distillery"
-			cfg.BinPath = "/home/test/.distillery/opt"
+			cfg.Path = "c:/users/test/.distillery"
+			cfg.BinPath = "c:/users/test/.distillery/opt"
 
 			assert.NoError(t, err)
 			inv := inventory.Inventory{}
 			inv.SetConfig(cfg)
 			for bin, target := range tc.bins {
-				_ = inv.AddVersion(bin, target)
+				_ = inv.AddVersion(filepath.ToSlash(bin), filepath.ToSlash(target))
 			}
 
 			for bin, expected := range tc.expected {
@@ -231,7 +236,7 @@ func TestInventory_AddVersion(t *testing.T) {
 	}
 }
 
-func BenchmarkInventoryNew(b *testing.B) {
+func BenchmarkInventoryWindowsNew(b *testing.B) {
 	tempDir, err := os.MkdirTemp("", "inventory_test")
 	if err != nil {
 		b.Fatalf("Failed to create temp directory: %v", err)
@@ -280,9 +285,9 @@ func BenchmarkInventoryNew(b *testing.B) {
 	}
 }
 
-func BenchmarkInventoryHomeDir(b *testing.B) {
+func BenchmarkInventoryWindowsHomeDir(b *testing.B) {
 	userDir, _ := os.UserHomeDir()
-	basePath := "/"
+	basePath := "C:/"
 	baseFS := os.DirFS(basePath)
 	binPath := filepath.Join(userDir, ".distillery", "bin")
 	cfg, err := config.New("")

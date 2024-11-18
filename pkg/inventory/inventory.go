@@ -34,6 +34,9 @@ func (i *Inventory) SetConfig(cfg *config.Config) {
 }
 
 func (i *Inventory) AddVersion(path, target string) error {
+	path = filepath.ToSlash(path)
+	target = filepath.ToSlash(target)
+
 	binName := filepath.Base(path)
 	version := "latest"
 	latest := true
@@ -54,9 +57,13 @@ func (i *Inventory) AddVersion(path, target string) error {
 		i.latestPaths = make(map[string]string)
 	}
 
-	source := strings.TrimPrefix(strings.TrimPrefix(target, i.config.GetOptPath()), "/")
-	baseSourceParts := strings.SplitAfterN(source, "/", 4)
-	baseSource := strings.TrimSuffix(strings.Join(baseSourceParts[:3], ""), "/")
+	// TODO: this doesn't work on windows :facepalm:
+
+	relativeBin, _ := filepath.Rel(i.config.GetOptPath(), target)
+	relativeBin = filepath.ToSlash(relativeBin)
+
+	relativeParts := strings.Split(relativeBin, "/") // note: using / because we are standardizing via ToSlash
+	baseSource := filepath.ToSlash(filepath.Join(relativeParts[:3]...))
 
 	if i.Bins[baseSource] == nil {
 		src := strings.TrimPrefix(strings.TrimPrefix(target, i.config.GetOptPath()), "/")
@@ -181,10 +188,13 @@ func New(fileSystem fs.FS, basePath, binPath string, cfg *config.Config) *Invent
 			return nil
 		}
 
-		target, err := os.Readlink(filepath.Join(basePath, path))
+		target, err := os.Readlink(filepath.ToSlash(filepath.Join(basePath, path)))
 		if err != nil {
 			logrus.WithError(err).Warn("failed to read symlink")
 		}
+
+		path = filepath.ToSlash(path)
+		target = filepath.ToSlash(target)
 
 		logrus.WithFields(logrus.Fields{
 			"path":   path,
