@@ -463,6 +463,17 @@ func TestAssetInstall(t *testing.T) {
 				"dist",
 			},
 		},
+		{
+			name:         "test-1.12.3-darwin-10.12-amd64",
+			os:           "darwin",
+			arch:         "amd64",
+			version:      "1.12.3",
+			fileType:     Binary,
+			downloadFile: createFile(t, []byte{0xFE, 0xED, 0xFA, 0xCE}),
+			expectedFiles: []string{
+				"test",
+			},
+		},
 	}
 
 	for _, c := range cases {

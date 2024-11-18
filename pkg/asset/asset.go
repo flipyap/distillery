@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -307,6 +308,8 @@ func (a *Asset) determineInstallable() {
 	}
 }
 
+var versionReplace = regexp.MustCompile(`\d+\.\d+`)
+
 // Install installs the asset
 // TODO(ek): simplify this function
 func (a *Asset) Install(id, binDir, optDir string) error {
@@ -342,6 +345,8 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 
 		dstFilename = strings.ReplaceAll(dstFilename, fmt.Sprintf("v%s", a.Version), "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Version, "")
+
+		dstFilename = versionReplace.ReplaceAllString(dstFilename, "")
 
 		if a.OS == osconfig.Windows || strings.HasSuffix(dstFilename, ".exe") {
 			dstFilename = strings.TrimSuffix(dstFilename, ".exe")

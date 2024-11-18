@@ -45,24 +45,28 @@ type Config struct {
 	Providers map[string]*Provider `yaml:"providers" toml:"providers"`
 }
 
+func (c *Config) GetPath() string {
+	return filepath.ToSlash(c.Path)
+}
+
 // GetCachePath - get the cache path
 func (c *Config) GetCachePath() string {
-	return filepath.Join(c.CachePath, common.NAME)
+	return filepath.ToSlash(filepath.Join(c.CachePath, common.NAME))
 }
 
 // GetMetadataPath - get the metadata path
 func (c *Config) GetMetadataPath() string {
-	return filepath.Join(c.CachePath, common.NAME, "metadata")
+	return filepath.ToSlash(filepath.Join(c.CachePath, common.NAME, "metadata"))
 }
 
 // GetDownloadsPath - get the downloads path
 func (c *Config) GetDownloadsPath() string {
-	return filepath.Join(c.CachePath, common.NAME, "downloads")
+	return filepath.ToSlash(filepath.Join(c.CachePath, common.NAME, "downloads"))
 }
 
 // GetOptPath - get the opt path
 func (c *Config) GetOptPath() string {
-	return filepath.Join(c.Path, "opt")
+	return filepath.ToSlash(filepath.Join(c.GetPath(), "opt"))
 }
 
 // GetAlias - get an alias by name
@@ -82,7 +86,7 @@ func (c *Config) GetAlias(name string) *Alias {
 
 // MkdirAll - create all the directories
 func (c *Config) MkdirAll() error {
-	paths := []string{c.BinPath, c.GetOptPath(), c.CachePath, c.GetMetadataPath(), c.GetDownloadsPath()}
+	paths := []string{c.BinPath, c.GetOptPath(), c.GetCachePath(), c.GetMetadataPath(), c.GetDownloadsPath()}
 
 	for _, path := range paths {
 		err := os.MkdirAll(path, 0755)
