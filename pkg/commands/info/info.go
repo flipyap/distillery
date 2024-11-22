@@ -3,6 +3,7 @@ package info
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -29,13 +30,13 @@ func Execute(c *cli.Context) error {
 	log.Infof("configuration")
 	log.Infof("   home: %s", cfg.Path)
 	log.Infof("    bin: %s", cfg.BinPath)
-	log.Infof("    opt: %s", cfg.GetOptPath())
-	log.Infof("  cache: %s", cfg.CachePath)
+	log.Infof("    opt: %s", filepath.FromSlash(cfg.GetOptPath()))
+	log.Infof("  cache: %s", filepath.FromSlash(cfg.GetCachePath()))
 	fmt.Println("")
 	log.Warnf("To cleanup all of distillery, remove the following directories:")
-	log.Warnf("  - %s", cfg.GetCachePath())
+	log.Warnf("  - %s", filepath.FromSlash(cfg.GetCachePath()))
 	log.Warnf("  - %s", cfg.BinPath)
-	log.Warnf("  - %s", cfg.GetOptPath())
+	log.Warnf("  - %s", filepath.FromSlash(cfg.GetOptPath()))
 
 	path := os.Getenv("PATH")
 	if !strings.Contains(path, cfg.BinPath) {
