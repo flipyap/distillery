@@ -38,7 +38,7 @@ and many others to pre-compile their software and put their binaries up on GitHu
 
 ## Install
 
-## MacOS/Linux
+### MacOS/Linux
 
 1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
 2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
@@ -46,7 +46,7 @@ and many others to pre-compile their software and put their binaries up on GitHu
 4. Delete `./dist` and the .tar.gz, now use `dist` normally
 5. Run `dist install owner/repo` to install a binary from GitHub Repository
 
-## Windows
+### Windows
 
 1. [Set Your Path](#set-your-path)
 2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
@@ -54,27 +54,21 @@ and many others to pre-compile their software and put their binaries up on GitHu
 4. Delete `.\dist.exe` and the .zip, now use `dist` normally
 5. Run `dist install owner/repo` to install a binary from GitHub Repository
 
-### Set Your Path
+#### Set Your Path
 
-#### For Current Session
+##### For Current Session
 
 ```powershell
 $env:Path = "C:\Users\<username>\.distillery\bin;" + $env:Path
 ```
 
-#### For Current User
+##### For Current User
 
 ```powershell
 [Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::User)
 ```
 
-### For System
-
-```powershell
-[Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::Machine)
-```
-
-### Uninstall
+## Uninstall
 
 1. Run `dist info`
 2. Remove the directories listed under the cleanup section
@@ -114,7 +108,8 @@ dist install homebrew/opentofu
 - GitHub
 - GitLab
 - Homebrew (binaries only, if anything has a dependency, it will not work at this time)
-- Hashicorp (special handling for their releases, pointing to github repos will automatically pass through)
+- Hashicorp (special handling for their releases, pointing to GitHub repos will automatically pass through)
+- Kubernetes (special handling for their releases, pointing to GitHub repos will automatically pass through)
 
 ### Authentication
 
@@ -143,6 +138,12 @@ versions are symlinked with the suffix `@version` this means you can have multip
 
 It also means you can call any version any time using the `@version` syntax or if you are using something like [direnv](https://direnv.net/)
 you can set aliases in your `.envrc` file for specific versions.
+
+#### Example
+
+```console
+alias terraform="terraform@1.8.5"
+```
 
 ## Directory Structure
 

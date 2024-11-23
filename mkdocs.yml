@@ -38,13 +38,17 @@ theme:
     - navigation.footer
     - navigation.indexes
     - navigation.path
-    - navigation.sections
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.sections
+    - navigation.expand
     - toc.follow
     - toc.integrate
     - content.code.annotate
     - content.code.copy
     - content.tooltips
+    - content.tabs.link
     - search.highlight
     - search.share
     - search.suggest
@@ -66,4 +70,8 @@ markdown_extensions:
 # Page tree
 nav:
   - Home: index.md
-  - Config: config.md
+  - Installation: installation.md
+  - Config:
+    - Overview: config.md
+    - Aliases: config/aliases.md
+
