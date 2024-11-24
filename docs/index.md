@@ -7,7 +7,7 @@
 
 === "Windows"
     ```powershell
-    iwr https://get.dist.sh/ps1 -useb | iex
+    iwr https://get.dist.sh/install.ps1 -useb | iex
     ```
 
 **Note:** Yes, I know, you really shouldn't download and run scripts from the internet, but at least it's not using `sudo`!
