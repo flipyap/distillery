@@ -1,0 +1,27 @@
+name: installers
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-installers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set-version
+        run: |
+          sed -e "s/__VERSION__/${{ github.event.release.tag_name }}/" scripts/installer.tpl.sh > installer.sh
+          sed -e "s/__VERSION__/${{ github.event.release.tag_name }}/" scripts/installer.tpl.ps1 > installer.ps1
+
+      - name: upload
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer.sh
+            installer.ps1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
