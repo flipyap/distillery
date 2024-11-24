@@ -17,6 +17,14 @@ jobs:
           sed -e "s/__VERSION__/${{ github.event.release.tag_name }}/" scripts/installer.tpl.sh > installer.sh
           sed -e "s/__VERSION__/${{ github.event.release.tag_name }}/" scripts/installer.tpl.ps1 > installer.ps1
 
+      - name: generate-token
+        id: generate_token
+        uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2
+        with:
+          app_id: ${{ secrets.BOT2_APP_ID }}
+          private_key: ${{ secrets.BOT2_APP_PEM }}
+          revoke: true
+
       - name: upload
         uses: softprops/action-gh-release@v2
         with:
@@ -24,4 +32,4 @@ jobs:
             installer.sh
             installer.ps1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
