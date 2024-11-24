@@ -74,4 +74,6 @@ nav:
   - Config:
     - Overview: config.md
     - Aliases: config/aliases.md
+  - Architecture: architecture.md
+  - Supported Sources: sources.md
 

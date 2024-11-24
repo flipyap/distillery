@@ -36,8 +36,9 @@ and many others to pre-compile their software and put their binaries up on GitHu
 - Support private repositories (this was a feature removed from homebrew)
 - Support checksum verifications (if they exist)
 - Support signatures verifications (if they exist) (**not implemented yet**)
+- [Aliases](config/aliases.md) for easy access to binaries
 
-### Examples
+## Examples
 
 Install a specific version of a tool using `@version` syntax. `github` is the default scope, this implies
 `github/ekristen/aws-nuke`
@@ -67,19 +68,6 @@ installing from GitHub or GitLab directly.
 dist install homebrew/opentofu
 ```
 
-## Supported Platforms
-
-- GitHub
-- GitLab
-- Homebrew (binaries only, if anything has a dependency, it will not work at this time)
-- Hashicorp (special handling for their releases, pointing to github repos will automatically pass through)
-
-### Authentication
-
-Distillery supports authentication for GitHub and GitLab. There are CLI options to pass in a token, but the preferred
-method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` environment variables using a tool like
-[direnv](https://direnv.net/).
-
 ## Behaviors
 
 - Allow for multiple versions of a binary using `tool@version` syntax
@@ -88,8 +76,6 @@ method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` envi
 - Caching of downloads
 
 ### Running install always updates default symlink
-
-**Note:** this might change before exiting beta.
 
 Whenever you run install the default symlink will always be updated to whatever version you specify. This is to make
 it easy to switch versions.
@@ -102,26 +88,8 @@ versions are symlinked with the suffix `@version` this means you can have multip
 It also means you can call any version any time using the `@version` syntax or if you are using something like [direnv](https://direnv.net/)
 you can set aliases in your `.envrc` file for specific versions.
 
-## Directory Structure
+#### Example
 
-- Binaries
-    - Symlinks `$HOME/.distillery/bin` (this should be in your `$PATH` variable)
-    - Binaries `$HOME/.distillery/opt` (this is where the raw binaries are stored and symlinked to)
-        - `source/owner/repo/version/<binaries>`
-            - example: `github/ekristen/aws-nuke/v2.15.0/aws-nuke`
-            - example: `hashicorp/terraform/v0.14.7/terraform`
-- Cache directory (downloads, http caching)
-    - MacOS `$HOME/Library/Caches/distillery`
-    - Linux `$HOME/.cache/distillery`
-    - Windows `$HOME/AppData/Local/distillery`
-
-### Caching
-
-At the moment there are two discrete caches. One for HTTP requests and one for downloads. The HTTP cache is used to
-store the ETag and Last-Modified headers from the server to determine if the file has changed. The download cache is
-used to store the downloaded file. The download cache is not used to determine if the file has changed, that is done
-by the HTTP cache.
-
-If you need to delete your cache simply run `dist info` identify the cache directory and remove it.
-
-**Note:** I may add a cache clear command in the future.
+```console
+alias terraform="terraform@1.8.5"
+```
