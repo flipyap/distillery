@@ -45,6 +45,7 @@ var (
 	bomType      = filetype.AddType("bom", "application/octet-stream")
 	pubType      = filetype.AddType("pub", "text/plain")
 	tarGzType    = filetype.AddType("tgz", "application/tar+gzip")
+	zstdType     = filetype.AddType("zst", "application/zstd")
 
 	ignoreFileExtensions = []string{
 		".txt",
@@ -208,7 +209,7 @@ func (a *Asset) Classify(name string) Type { //nolint:gocyclo
 		switch filetype.GetType(ext) {
 		case matchers.TypeDeb, matchers.TypeRpm, msiType, apkType, pkgType:
 			aType = Installer
-		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType:
+		case matchers.TypeGz, matchers.TypeZip, matchers.TypeXz, matchers.TypeTar, matchers.TypeBz2, tarGzType, zstdType, matchers.TypeZstd:
 			aType = Archive
 		case matchers.TypeExe:
 			aType = Binary

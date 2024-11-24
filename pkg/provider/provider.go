@@ -130,13 +130,14 @@ func (p *Provider) discoverBinary(names []string, version string) error { //noli
 		}
 
 		fileScored[k] = score.Score(v, &score.Options{
-			OS:          detectedOS,
-			Arch:        arch,
-			Extensions:  ext,
-			Terms:       names,
-			Versions:    []string{version},
-			InvalidOS:   p.OSConfig.InvalidOS(),
-			InvalidArch: p.OSConfig.InvalidArchitectures(),
+			OS:                detectedOS,
+			Arch:              arch,
+			Extensions:        ext,
+			Terms:             names,
+			Versions:          []string{version},
+			InvalidOS:         p.OSConfig.InvalidOS(),
+			InvalidArch:       p.OSConfig.InvalidArchitectures(),
+			InvalidExtensions: []string{".zst"},
 		})
 
 		if len(fileScored[k]) > 0 {
