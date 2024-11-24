@@ -46,4 +46,4 @@ TAR_FILE="${FILE_BASENAME}-${VERSION}-${OS}-${ARCH}.tar.gz"
 )
 
 tar -xf "$TMP_DIR/$TAR_FILE" -C "$TMP_DIR"
-"$TMP_DIR/dist" "install ekristen/distillery" "$@"
+"$TMP_DIR/dist" "install" "ekristen/distillery" "$@"

@@ -69,7 +69,7 @@ Expand-Archive -Path "$TMP_DIR\$TAR_FILE" -DestinationPath $TMP_DIR -Force
 
 # Run the installation command
 Write-Host "Installing distillery..."
-& "$TMP_DIR\dist" "install ekristen/distillery" @args
+& "$TMP_DIR\dist" "install" "ekristen/distillery" @args
 
 # Clean up
 Remove-Item -Recurse -Force $TMP_DIR
