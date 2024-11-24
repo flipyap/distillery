@@ -1,15 +1,10 @@
 # Distillery
 
-![Static Badge](https://img.shields.io/badge/Status%20-%20Beta%20-%20orange)
-![GitHub Release](https://img.shields.io/github/v/release/ekristen/distillery?include_prereleases)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ekristen/distillery/total)
 ![GitHub License](https://img.shields.io/github/license/ekristen/distillery)
-
 [![Known Vulnerabilities](https://snyk.io/test/github/ekristen/distillery/badge.svg)](https://snyk.io/test/github/ekristen/distillery)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ekristen/distillery)](https://goreportcard.com/report/github.com/ekristen/distillery)
-
-Most things are working, this project follows semantic commits and semantic releases, any breaking
-changes will result in new major versions.
+![GitHub Release](https://img.shields.io/github/v/release/ekristen/distillery?include_prereleases)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ekristen/distillery/total)
 
 ## Overview
 
@@ -27,6 +22,10 @@ The goal of this project is to install binaries by leverage the collective power
 are using tools like [goreleaser](https://goreleaser.com/) and [cargo-dist](https://github.com/axodotdev/cargo-dist)
 and many others to pre-compile their software and put their binaries up on GitHub or GitLab.
 
+## Documentation
+
+[Full Documentation](https://dist.sh)
+
 ## Features
 
 - Simple to install binaries on your system from multiple sources
@@ -34,44 +33,65 @@ and many others to pre-compile their software and put their binaries up on GitHu
 - Support multiple platforms and architectures
 - Support private repositories (this was a feature removed from homebrew)
 - Support checksum verifications (if they exist)
-- Support signatures verifications (if they exist) (**not implemented yet**)
+- Support signatures verifications (if they exist)
 
-## Install
+## Quickstart
+
+See full documentation at [Installation](https://dist.sh/installation/)
+
+**Note:** the installation script **DO NOT CURRENTLY** try to modify your path, you will need to do that manually.
 
 ### MacOS/Linux
-
-1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
-2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
-3. Extract and Run `./dist install ekristen/distillery`
-4. Delete `./dist` and the .tar.gz, now use `dist` normally
-5. Run `dist install owner/repo` to install a binary from GitHub Repository
-
-### Windows
-
-1. [Set Your Path](#set-your-path)
-2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
-3. Extract and Run `.\dist.exe install ekristen/distillery`
-4. Delete `.\dist.exe` and the .zip, now use `dist` normally
-5. Run `dist install owner/repo` to install a binary from GitHub Repository
-
-#### Set Your Path
-
-##### For Current Session
-
-```powershell
-$env:Path = "C:\Users\<username>\.distillery\bin;" + $env:Path
+```bash
+curl --proto '=https' --tlsv1.2 -LsSf https://get.dist.sh | sh
 ```
 
-##### For Current User
+### Windows
+```powershell
+iwr https://get.dist.sh/install.ps1 -useb | iex
+```
+
+### Adjust Your Path
+
+#### MacOS/Linux
+
+```bash
+export PATH=$HOME/.distillery/bin:$PATH`
+```
+
+#### Windows
 
 ```powershell
 [Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::User)
 ```
 
-## Uninstall
+## Behaviors
 
-1. Run `dist info`
-2. Remove the directories listed under the cleanup section
+- Allow for multiple versions of a binary using `tool@version` syntax
+- Running installation for any version will automatically update the default symlink to that version (i.e. switching versions)
+- Caching of HTTP calls where possible (GitHub primarily)
+- Caching of downloads
+
+### Running install always updates default symlink
+
+**Note:** this might change before exiting beta.
+
+Whenever you run install the default symlink will always be updated to whatever version you specify. This is to make
+it easy to switch versions.
+
+### Multiple Versions
+
+Every time you run install it will by default seek out the latest version, it will not remove any other versions. All
+versions are symlinked with the suffix `@version` this means you can have multiple versions installed at the same time.
+
+It also means you can call any version any time using the `@version` syntax or if you are using something like [direnv](https://direnv.net/)
+you can set aliases in your `.envrc` file for specific versions.
+
+#### Example
+
+```console
+alias terraform="terraform@1.8.5"
+```
 
 ### Examples
 
@@ -103,7 +123,7 @@ installing from GitHub or GitLab directly.
 dist install homebrew/opentofu
 ```
 
-## Supported Platforms
+## Supported Sources
 
 - GitHub
 - GitLab
@@ -116,34 +136,6 @@ dist install homebrew/opentofu
 Distillery supports authentication for GitHub and GitLab. There are CLI options to pass in a token, but the preferred
 method is to set the `DISTILLERY_GITHUB_TOKEN` or `DISTILLERY_GITLAB_TOKEN` environment variables using a tool like
 [direnv](https://direnv.net/).
-
-## Behaviors
-
-- Allow for multiple versions of a binary using `tool@version` syntax
-- Running installation for any version will automatically update the default symlink to that version (i.e. switching versions)
-- Caching of HTTP calls where possible (GitHub primarily)
-- Caching of downloads
-
-### Running install always updates default symlink
-
-**Note:** this might change before exiting beta.
-
-Whenever you run install the default symlink will always be updated to whatever version you specify. This is to make
-it easy to switch versions.
-
-### Multiple Versions
-
-Every time you run install it will by default seek out the latest version, it will not remove any other versions. All
-versions are symlinked with the suffix `@version` this means you can have multiple versions installed at the same time.
-
-It also means you can call any version any time using the `@version` syntax or if you are using something like [direnv](https://direnv.net/)
-you can set aliases in your `.envrc` file for specific versions.
-
-#### Example
-
-```console
-alias terraform="terraform@1.8.5"
-```
 
 ## Directory Structure
 
