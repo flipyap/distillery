@@ -1,15 +1,16 @@
-# Distillery
+## Quickstart
 
-![Static Badge](https://img.shields.io/badge/Status%20-%20Beta%20-%20orange)
-![GitHub Release](https://img.shields.io/github/v/release/ekristen/distillery?include_prereleases)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ekristen/distillery/total)
-![GitHub License](https://img.shields.io/github/license/ekristen/distillery)
+=== "MacOS/Linux"
+    ```bash
+    curl --proto '=https' --tlsv1.2 -LsSf https://get.dist.sh | sh
+    ```
 
-[![Known Vulnerabilities](https://snyk.io/test/github/ekristen/distillery/badge.svg)](https://snyk.io/test/github/ekristen/distillery)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ekristen/distillery)](https://goreportcard.com/report/github.com/ekristen/distillery)
+=== "Windows"
+    ```powershell
+    iwr https://get.dist.sh/ps1 -useb | iex
+    ```
 
-Most things are working, this project follows semantic commits and semantic releases, any breaking
-changes will result in new major versions.
+**Note:** Yes, I know, you really shouldn't download and run scripts from the internet, but at least it's not using `sudo`!
 
 ## Overview
 
@@ -35,49 +36,6 @@ and many others to pre-compile their software and put their binaries up on GitHu
 - Support private repositories (this was a feature removed from homebrew)
 - Support checksum verifications (if they exist)
 - Support signatures verifications (if they exist) (**not implemented yet**)
-
-## Install
-
-## MacOS/Linux
-
-1. Set your path `export PATH=$HOME/.distillery/bin:$PATH`
-2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
-3. Extract and Run `./dist install ekristen/distillery`
-4. Delete `./dist` and the .tar.gz, now use `dist` normally
-5. Run `dist install owner/repo` to install a binary from GitHub Repository
-
-## Windows
-
-1. [Set Your Path](#set-your-path)
-2. Download the latest release from the [releases page](https://github.com/ekristen/distillery/releases)
-3. Extract and Run `.\dist.exe install ekristen/distillery`
-4. Delete `.\dist.exe` and the .zip, now use `dist` normally
-5. Run `dist install owner/repo` to install a binary from GitHub Repository
-
-### Set Your Path
-
-#### For Current Session
-
-```powershell
-$env:Path = "C:\Users\<username>\.distillery\bin;" + $env:Path
-```
-
-#### For Current User
-
-```powershell
-[Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::User)
-```
-
-### For System
-
-```powershell
-[Environment]::SetEnvironmentVariable("Path", "C:\Users\<username>\.distillery\bin;" + $env:Path, [EnvironmentVariableTarget]::Machine)
-```
-
-### Uninstall
-
-1. Run `dist info`
-2. Remove the directories listed under the cleanup section
 
 ### Examples
 
