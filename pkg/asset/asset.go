@@ -313,7 +313,7 @@ var versionReplace = regexp.MustCompile(`\d+\.\d+`)
 
 // Install installs the asset
 // TODO(ek): simplify this function
-func (a *Asset) Install(id, binDir, optDir string) error { //nolint:funlen
+func (a *Asset) Install(id, binDir, optDir string) error {
 	found := false
 
 	if err := os.MkdirAll(optDir, 0755); err != nil {
@@ -349,7 +349,6 @@ func (a *Asset) Install(id, binDir, optDir string) error { //nolint:funlen
 			dstFilename = strings.ReplaceAll(dstFilename, osAlias, "")
 		}
 		for _, osArch := range osData.GetArchitectures() {
-			fmt.Println(osArch)
 			dstFilename = strings.ReplaceAll(dstFilename, osArch, "")
 		}
 
