@@ -344,6 +344,15 @@ func (a *Asset) Install(id, binDir, optDir string) error {
 		dstFilename = strings.ReplaceAll(dstFilename, a.OS, "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Arch, "")
 
+		osData := osconfig.New(a.OS, a.Arch)
+		for _, osAlias := range osData.GetAliases() {
+			dstFilename = strings.ReplaceAll(dstFilename, osAlias, "")
+		}
+		for _, osArch := range osData.GetArchitectures() {
+			fmt.Println(osArch)
+			dstFilename = strings.ReplaceAll(dstFilename, osArch, "")
+		}
+
 		dstFilename = strings.ReplaceAll(dstFilename, fmt.Sprintf("v%s", a.Version), "")
 		dstFilename = strings.ReplaceAll(dstFilename, a.Version, "")
 

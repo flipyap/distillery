@@ -474,6 +474,28 @@ func TestAssetInstall(t *testing.T) {
 				"test",
 			},
 		},
+		{
+			name:         "delta-aarch64-apple-darwin",
+			os:           "darwin",
+			arch:         "arm64",
+			version:      "1.0.0",
+			fileType:     Binary,
+			downloadFile: createFile(t, []byte{0xFE, 0xED, 0xFA, 0xCE}),
+			expectedFiles: []string{
+				"delta",
+			},
+		},
+		{
+			name:         "delta-x86_64-apple-darwin",
+			os:           "darwin",
+			arch:         "amd64",
+			version:      "1.0.0",
+			fileType:     Binary,
+			downloadFile: createFile(t, []byte{0xFE, 0xED, 0xFA, 0xCE}),
+			expectedFiles: []string{
+				"delta",
+			},
+		},
 	}
 
 	for _, c := range cases {
@@ -506,7 +528,7 @@ func TestAssetInstall(t *testing.T) {
 				destBinPath := filepath.Join(optDir, destBinaryName)
 
 				baseLinkName := filepath.Join(binDir, filepath.Base(fileName))
-				versionedLinkName := filepath.Join(binDir, fmt.Sprintf("%s@%s", filepath.Base(fileName), "1.0.0"))
+				versionedLinkName := filepath.Join(binDir, fmt.Sprintf("%s@%s", filepath.Base(fileName), version))
 
 				_, err = os.Stat(destBinPath)
 				assert.NoError(t, err)
