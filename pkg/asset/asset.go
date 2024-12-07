@@ -313,7 +313,7 @@ var versionReplace = regexp.MustCompile(`\d+\.\d+`)
 
 // Install installs the asset
 // TODO(ek): simplify this function
-func (a *Asset) Install(id, binDir, optDir string) error {
+func (a *Asset) Install(id, binDir, optDir string) error { //nolint:funlen
 	found := false
 
 	if err := os.MkdirAll(optDir, 0755); err != nil {
