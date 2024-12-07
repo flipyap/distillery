@@ -1,7 +1,5 @@
 package osconfig
 
-import "sort"
-
 const (
 	Windows = "windows"
 	Linux   = "linux"
@@ -13,7 +11,7 @@ const (
 )
 
 var (
-	AMD64Architectures = []string{"amd64", "x86_64", "64bit", "x64", "x86", "64-bit", "x86-64"}
+	AMD64Architectures = []string{"amd64", "x86_64", "x86-64", "64bit", "x64", "x86", "64-bit"}
 	ARM64Architectures = []string{"arm64", "aarch64", "armv8-a", "arm64-bit"}
 )
 
@@ -27,6 +25,10 @@ type OS struct {
 
 func (o *OS) GetOS() []string {
 	return append([]string{o.Name}, o.Aliases...)
+}
+
+func (o *OS) GetAliases() []string {
+	return o.Aliases
 }
 
 func (o *OS) GetArchitecture() string {
@@ -80,7 +82,7 @@ func New(os, arch string) *OS {
 		newOS.Aliases = []string{}
 		newOS.Extensions = []string{".AppImage"}
 	case Darwin:
-		newOS.Aliases = []string{"macos", "sonoma"}
+		newOS.Aliases = []string{"macos", "apple", "ventura", "sonoma", "sequoia"}
 		newOS.Architectures = append(newOS.Architectures, "universal")
 	}
 
@@ -92,7 +94,6 @@ func New(os, arch string) *OS {
 	}
 
 	newOS.Architectures = removeDuplicateStr(newOS.Architectures)
-	sort.Strings(newOS.Architectures)
 
 	return newOS
 }
