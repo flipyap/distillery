@@ -16,7 +16,7 @@ TMP_DIR="$(mktemp -d)"
 # shellcheck disable=SC2064 # intentionally expands here
 trap "rm -rf \"$TMP_DIR\"" EXIT INT TERM
 
-OS="$(uname -s | sed -e 's/\(.*\)/\L\1/')"
+OS="$(uname -s | awk '{print tolower($0)}')"
 ARCH="$(uname -m)"
 case "$ARCH" in
     x86_64) ARCH="amd64" ;; # Normalize x86_64 to amd64
