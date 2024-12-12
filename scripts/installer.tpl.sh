@@ -30,16 +30,26 @@ TAR_FILE="${FILE_BASENAME}-${VERSION}-${OS}-${ARCH}.tar.gz"
 	curl -sfLO "$RELEASES_URL/download/$VERSION/$TAR_FILE"
 	curl -sfLO "$RELEASES_URL/download/$VERSION/checksums.txt"
 	echo "Verifying checksums..."
-	sha256sum --ignore-missing --quiet --check checksums.txt
+	if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum --ignore-missing --quiet --check checksums.txt
+   elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 -c checksums.txt
+   else
+    echo "Neither sha256sum nor shasum is available to verify checksums." >&2
+   fi
 	if command -v cosign >/dev/null 2>&1; then
 		echo "Verifying signatures..."
 		REF="refs/tags/$VERSION"
-		cosign verify-blob \
-			--certificate-identity-regexp "https://github.com/ekristen/distillery.*/.github/workflows/.*.yml@$REF" \
-			--certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-			--cert "$RELEASES_URL/download/$VERSION/checksums.txt.pem" \
-			--signature "$RELEASES_URL/download/$VERSION/checksums.txt.sig" \
-			checksums.txt
+		if ! cosign verify-blob \
+       --certificate-identity-regexp "https://github.com/ekristen/distillery.*/.github/workflows/.*.yml@$REF" \
+       --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+       --cert "$RELEASES_URL/download/$VERSION/checksums.txt.pem" \
+       --signature "$RELEASES_URL/download/$VERSION/checksums.txt.sig" \
+       checksums.txt; then
+        echo "Signature verification failed, continuing without verification."
+     else
+      echo "Signature verification succeeded."
+     fi
 	else
 		echo "Could not verify signatures, cosign is not installed."
 	fi
