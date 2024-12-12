@@ -35,7 +35,7 @@ and many others to pre-compile their software and put their binaries up on GitHu
 - Support multiple platforms and architectures
 - Support private repositories (this was a feature removed from homebrew)
 - Support checksum verifications (if they exist)
-- Support signatures verifications (if they exist) (**not implemented yet**)
+- Support signatures verifications (if they exist)
 - [Aliases](config/aliases.md) for easy access to binaries
 
 ## Examples
